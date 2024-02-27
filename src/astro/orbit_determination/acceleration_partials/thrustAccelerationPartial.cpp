@@ -200,7 +200,7 @@ void MomentumWheelDesaturationPartial::wrtDesaturationDeltaVValues( Eigen::Matri
     accelerationPartial.setZero( );
     accelerationPartial.block( 0, 3 * thrustAcceleration_->getCurrentNearestTimeIndex( ), 3, 3 ) =
           Eigen::Matrix3d::Identity( ) * thrustAcceleration_->getCurrentThrustMultiplier( ) /
-              ( thrustAcceleration_->getTotalManeuverTime( ) - thrustAcceleration_->getManeuverRiseTime( ) );
+              ( thrustAcceleration_->getTotalManeuverTime( ).at(thrustAcceleration_->getCurrentNearestTimeIndex( )) - thrustAcceleration_->getManeuverRiseTime( ) );
 }
 
 }

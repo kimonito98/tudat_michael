@@ -2298,7 +2298,7 @@ BOOST_AUTO_TEST_CASE( testMomentumWheelDesaturationThrust )
     { 1.0E-3 * ( Eigen::Vector3d( ) << 0.3, -2.5, 3.4 ).finished( ),
       1.0E-3 * ( Eigen::Vector3d( ) << 2.0, 5.9, -0.5 ).finished( ),
       1.0E-3 * ( Eigen::Vector3d( ) << -1.6, 4.4, -5.8 ).finished( ) };
-    double totalManeuverTime = 90.0;
+    std::vector< double > totalManeuverTime = { 90.0, 90.0, 90.0};
     double maneuverRiseTime = 15.0;
 
     // Define acceleration model settings.
@@ -2364,7 +2364,7 @@ BOOST_AUTO_TEST_CASE( testMomentumWheelDesaturationThrust )
     std::vector< double > thrustStartTimes;
     for( unsigned int i = 0; i < thrustMidTimes.size( ); i++ )
     {
-        thrustStartTimes.push_back( thrustMidTimes.at( i ) - totalManeuverTime / 2.0 );
+        thrustStartTimes.push_back( thrustMidTimes.at( i ) - totalManeuverTime.at( i )  / 2.0 );
     }
     thrustStartTimes.push_back( std::numeric_limits< double >::max( ) );
 
@@ -2385,11 +2385,11 @@ BOOST_AUTO_TEST_CASE( testMomentumWheelDesaturationThrust )
         double scalingNorm = 0.0;
 
         // If maneuver still ongoing at current time.
-        if( ( std::fabs( currentTime - currentStartTime ) < totalManeuverTime ) && ( currentTime > currentStartTime )  )
+        if( ( std::fabs( currentTime - currentStartTime ) < totalManeuverTime.at( currentNearestNeighbour ) ) && ( currentTime > currentStartTime )  )
         {
             // Compute peak desaturation acceleration.
             Eigen::Vector3d peakAcceleration = deltaVValues.at( currentNearestNeighbour ) /
-                    ( totalManeuverTime - maneuverRiseTime );
+                    ( totalManeuverTime.at( currentNearestNeighbour ) - maneuverRiseTime );
             scalingNorm = peakAcceleration.norm( );
 
             // Compute time elapsed since maneuver start.
@@ -2402,13 +2402,13 @@ BOOST_AUTO_TEST_CASE( testMomentumWheelDesaturationThrust )
                 expectedAcceleration = peakAcceleration * timeRatio * timeRatio * (
                             3.0 - 2.0 * timeRatio );
             }
-            else if( timeSinceStart < totalManeuverTime - maneuverRiseTime )
+            else if( timeSinceStart < totalManeuverTime.at( currentNearestNeighbour ) - maneuverRiseTime )
             {
                 expectedAcceleration = peakAcceleration;
             }
             else
             {
-                double timeRatio = ( totalManeuverTime - timeSinceStart ) / maneuverRiseTime;
+                double timeRatio = ( totalManeuverTime.at( currentNearestNeighbour ) - timeSinceStart ) / maneuverRiseTime;
                 expectedAcceleration = peakAcceleration * timeRatio * timeRatio * (
                             3.0 - 2.0 * timeRatio );
             }
@@ -2425,7 +2425,7 @@ BOOST_AUTO_TEST_CASE( testMomentumWheelDesaturationThrust )
 
                 // Check that the sensivity matrix blocks which describe the velocity partials w.r.t. the deltaV values
                 // of all the maneuvers encountered until current time are almost identity blocks.
-                if( currentTime - currentStartTime > totalManeuverTime )
+                if( currentTime - currentStartTime > totalManeuverTime.at( currentNearestNeighbour ) )
                 {
                     TUDAT_CHECK_MATRIX_CLOSE_FRACTION(
                                 sensitivityHistory.at( currentTime ).block( 3, i * 3, 3, 3 ), Eigen::Matrix3d::Identity( ), 1.0E-4 );

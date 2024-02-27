@@ -484,7 +484,8 @@ BOOST_AUTO_TEST_CASE( test_Sims_Flanagan_impulsive_shots )
     }
 
     // Set manuever properties
-    double totalManeuverTime = 9000.0;
+    double dummy = 9000.0;
+    std::vector< double > totalManeuverTime;
     double maneuverRiseTime = 1500.0;
     double currentMass = vehicleInitialMass;
     std::vector< Eigen::Vector3d > deltaVs;
@@ -494,6 +495,7 @@ BOOST_AUTO_TEST_CASE( test_Sims_Flanagan_impulsive_shots )
     {
         Eigen::Vector3d currentDeltaVvector = maximumThrust * bestThrottles[ i ] * segmentDurationForwardPropagation / currentMass;
         deltaVs.push_back( currentDeltaVvector );
+        totalManeuverTime.push_back( dummy );
         currentMass *= std::exp( - currentDeltaVvector.norm() /
                                  ( specificImpulseFunction( 0.0 ) * physical_constants::SEA_LEVEL_GRAVITATIONAL_ACCELERATION ) );
     }

@@ -767,7 +767,7 @@ public:
     MomentumWheelDesaturationAccelerationSettings(
             const std::vector< double > thrustMidTimes,
             const std::vector< Eigen::Vector3d > deltaVValues,
-            const double totalManeuverTime,
+            const std::vector< double > totalManeuverTime,
             const double maneuverRiseTime ): AccelerationSettings( basic_astrodynamics::momentum_wheel_desaturation_acceleration ),
         thrustMidTimes_( thrustMidTimes ), deltaVValues_( deltaVValues ),
         totalManeuverTime_( totalManeuverTime ), maneuverRiseTime_( maneuverRiseTime ){ }
@@ -779,7 +779,7 @@ public:
     std::vector< Eigen::Vector3d > deltaVValues_;
 
     // Total desaturation maneuver time.
-    double totalManeuverTime_;
+    std::vector< double > totalManeuverTime_;
 
     // Desaturation maneuvers rise time.
     double maneuverRiseTime_;
@@ -790,7 +790,7 @@ public:
 inline std::shared_ptr< AccelerationSettings > momentumWheelDesaturationAcceleration(
 		const std::vector< double > thrustMidTimes,
 		const std::vector< Eigen::Vector3d > deltaVValues,
-		const double totalManeuverTime,
+		const std::vector< double > totalManeuverTime,
 		const double maneuverRiseTime
 		)
 {

@@ -219,7 +219,7 @@ public:
     MomentumWheelDesaturationThrustAcceleration(
             const std::vector< double > thrustMidTimes,
             const std::vector< Eigen::Vector3d > deltaVValues,
-            const double totalManeuverTime,
+            const std::vector< double > totalManeuverTime,
             const double maneuverRiseTime ):
         basic_astrodynamics::AccelerationModel< Eigen::Vector3d >( ),
         totalManeuverTime_( totalManeuverTime ),
@@ -234,10 +234,10 @@ public:
         for( unsigned int i = 0; i < deltaVValues.size( ); i++ )
         {
             // Compute accelerations from desaturation deltaVs.
-            accelerationValues_.push_back( deltaVValues.at( i ) / ( totalManeuverTime_ - maneuverRiseTime_ ) );
+            accelerationValues_.push_back( deltaVValues.at( i ) / ( totalManeuverTime_.at( i ) - maneuverRiseTime_ ) );
 
             // Compute thrust start times.
-            thrustStartTimes_.push_back( thrustMidTimes.at( i ) - totalManeuverTime_ / 2.0 );
+            thrustStartTimes_.push_back( thrustMidTimes.at( i ) - totalManeuverTime_.at( i ) / 2.0 );
         }
         thrustStartTimes_.push_back( std::numeric_limits< double >::max( ) );
 
@@ -264,11 +264,11 @@ public:
             double currentThrustStartTime = thrustStartTimes_.at( nearestTimeIndex_ );
 
             // Check if the maneuver is still ongoing.
-            if( std::fabs( currentTime - currentThrustStartTime ) < totalManeuverTime_ && ( currentTime > currentThrustStartTime ) )
+            if( std::fabs( currentTime - currentThrustStartTime ) < totalManeuverTime_.at( nearestTimeIndex_ ) && ( currentTime > currentThrustStartTime ) )
             {
                 // Retrieve desaturation thrust multiplier and compute acceleration.
                 currentThrustMultiplier_ = getDesaturationThrustMultiplier(
-                            currentTime - currentThrustStartTime );
+                            currentTime - currentThrustStartTime, currentTime );
                 currentAcceleration_ = currentThrustMultiplier_ * accelerationValues_.at( nearestTimeIndex_ );
 
             }
@@ -292,8 +292,9 @@ public:
      * \param timeSinceThrustStart Time elapsed since maneuver started.
      * \return Desaturation thrust multiplier
      */
-    double getDesaturationThrustMultiplier( const double timeSinceThrustStart )
+    double getDesaturationThrustMultiplier( const double timeSinceThrustStart, const double currentTime )
     {
+        nearestTimeIndex_ = timeLookUpScheme_->findNearestLowerNeighbour( currentTime );
         // Check if the acceleration is still increasing (peak acceleration not achieved yet).
         if( timeSinceThrustStart < maneuverRiseTime_ )
         {
@@ -301,14 +302,14 @@ public:
             return timeRatio * timeRatio * ( 3.0 - 2.0 * timeRatio );
         }
         // Check if the peak acceleration is achieved.
-        else if( timeSinceThrustStart < totalManeuverTime_ - maneuverRiseTime_ )
+        else if( timeSinceThrustStart < totalManeuverTime_.at( nearestTimeIndex_ ) - maneuverRiseTime_ )
         {
             return 1.0;
         }
         // Check if the acceleration decreases after having reached its maximum.
-        else if( timeSinceThrustStart < totalManeuverTime_  )
+        else if( timeSinceThrustStart < totalManeuverTime_.at( nearestTimeIndex_ )  )
         {
-            return getDesaturationThrustMultiplier( totalManeuverTime_ - timeSinceThrustStart );
+            return getDesaturationThrustMultiplier( totalManeuverTime_.at( nearestTimeIndex_ )- timeSinceThrustStart, currentTime );
         }
         // Check if no maneuver is ongoing.
         else
@@ -332,7 +333,7 @@ public:
      * Function to get the total desaturation maneuver time.
      * \return Desaturation maneuver duration
      */
-    double getTotalManeuverTime( )
+    std::vector< double > getTotalManeuverTime( )
     {
         return totalManeuverTime_;
     }
@@ -367,7 +368,7 @@ public:
         deltaVValues_ = deltaVValues;
         for( unsigned int i = 0; i < deltaVValues.size( ); i++ )
         {
-            accelerationValues_[i] = ( deltaVValues.at( i ) / ( totalManeuverTime_ - maneuverRiseTime_ ) );
+            accelerationValues_[i] = ( deltaVValues.at( i ) / ( totalManeuverTime_.at( i ) - maneuverRiseTime_ ) );
         }
     }
 
@@ -385,7 +386,7 @@ public:
 private:
 
     //! Total desaturation maneuver time.
-    double totalManeuverTime_;
+    std::vector< double > totalManeuverTime_;
 
     //! Desaturation maneuvers rise time.
     double maneuverRiseTime_;
