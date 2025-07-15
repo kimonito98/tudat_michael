@@ -84,6 +84,7 @@ public:
         }
     }
 
+    
     //! Function for calculating the partial of the acceleration w.r.t. the velocity of body undergoing acceleration..
     /*!
      *  Function for calculating the partial of the acceleration w.r.t. the velocity of body undergoing acceleration
@@ -281,6 +282,7 @@ public:
     std::pair< std::function< void( Eigen::MatrixXd& ) >, int > getParameterPartialFunction(
             std::shared_ptr< estimatable_parameters::EstimatableParameter< Eigen::VectorXd > > parameter )
     {
+        std::cout<<"full getParameterPartialFunction" << std::endl;
         std::function< void( Eigen::MatrixXd& ) > partialFunction;
         int parameterSize = 0;
         if( customAccelerationPartialSet_->customVectorParameterPartials_.count( parameter->getParameterName( ) ) != 0 )
@@ -292,6 +294,42 @@ public:
                                customAccelerationPartialSet_->customVectorParameterPartials_.at( parameter->getParameterName( ) ) );
             parameterSize = parameter->getParameterSize( );
         }
+        else if( parameter->getParameterName( ).second.first == acceleratedBody_ &&
+            parameter->getParameterName( ).second.second == acceleratingBody_ )
+        {
+            switch( parameter->getParameterName( ).first )
+            {
+                case estimatable_parameters::arcwise_source_direction_radiation_pressure_scaling_factor:
+                {
+                    std::cout<<"getParameterPartialFunction arcwise_source_direction_radiation_pressure_scaling_factor"<<std::endl;
+                    auto arcParam = std::dynamic_pointer_cast<
+                        estimatable_parameters::ArcWiseRadiationPressureScalingFactor >( parameter );
+
+                    partialFunction = std::bind(
+                        &RadiationPressureAccelerationPartial::wrtArcWiseSourceDirectionScaling,
+                        this, std::placeholders::_1, arcParam );
+
+                    parameterSize = arcParam->getParameterSize( );
+                    break;
+                }
+                
+                case estimatable_parameters::arcwise_source_perpendicular_direction_radiation_pressure_scaling_factor:
+                {
+                    auto arcParam = std::dynamic_pointer_cast<
+                        estimatable_parameters::ArcWiseRadiationPressureScalingFactor >( parameter );
+
+                    partialFunction = std::bind(
+                        &RadiationPressureAccelerationPartial::wrtArcWisePerpendicularDirectionScaling,
+                        this, std::placeholders::_1, arcParam );
+
+                    parameterSize = arcParam->getParameterSize( );
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
         return std::make_pair( partialFunction, parameterSize );
     }
 
@@ -314,6 +352,14 @@ protected:
     void wrtDiffuseReflectivity( Eigen::MatrixXd& partial,
                                  std::shared_ptr< electromagnetism::PaneledRadiationPressureTargetModel > targetModel,
                                  const std::string& panelTypeId );
+
+    void wrtArcWiseSourceDirectionScaling(
+        Eigen::MatrixXd& partial,
+        const std::shared_ptr< estimatable_parameters::ArcWiseRadiationPressureScalingFactor > parameter );
+
+    void wrtArcWisePerpendicularDirectionScaling(
+        Eigen::MatrixXd& partial,
+        const std::shared_ptr< estimatable_parameters::ArcWiseRadiationPressureScalingFactor >  parameter );
 
     std::shared_ptr< electromagnetism::PaneledSourceRadiationPressureAcceleration > radiationPressureAcceleration_;
 

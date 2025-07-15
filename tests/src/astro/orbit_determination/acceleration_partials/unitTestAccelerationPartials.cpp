@@ -286,6 +286,54 @@ BOOST_AUTO_TEST_CASE( testPanelledRadiationPressureAccelerationPartials )
             BOOST_CHECK_EQUAL( testPartialWrtDiffuseReflectivity.norm( ), 0.0 );
             BOOST_CHECK_EQUAL( partialWrtDiffuseReflectivity.norm( ), 0.0 );
         }
+
+        // Define arcwise times
+        std::vector< double > arcTimes = { 0.0, 1800.0, 3600.0, 7200.0 };
+
+        // Create arc-wise source direction/perpendicular scaling factors
+        std::shared_ptr< EstimatableParameter< Eigen::VectorXd > > arcwiseSourceDirectionScaling =
+        std::make_shared< ArcWiseRadiationPressureScalingFactor >(
+                accelerationModel, arcTimes,
+                arcwise_source_direction_radiation_pressure_scaling_factor, "Vehicle", "Sun" );
+
+        std::shared_ptr< EstimatableParameter< Eigen::VectorXd > > arcwisePerpendicularScaling =
+        std::make_shared< ArcWiseRadiationPressureScalingFactor >(
+                accelerationModel, arcTimes,
+                arcwise_source_perpendicular_direction_radiation_pressure_scaling_factor, "Vehicle", "Sun" );
+
+        // Compute analytical arc-wise partials
+        std::cout<< "partialWrtArcwiseSourceDirection" <<std::endl;
+        Eigen::MatrixXd partialWrtArcwiseSourceDirection = accelerationPartial->wrtParameter( arcwiseSourceDirectionScaling );
+        Eigen::MatrixXd partialWrtArcwisePerpendicular = accelerationPartial->wrtParameter( arcwisePerpendicularScaling );
+
+        // Compute numerical arc-wise partials
+        Eigen::MatrixXd testPartialWrtArcwiseSourceDirection =
+                calculateAccelerationWrtParameterPartials( arcwiseSourceDirectionScaling, accelerationModel, Eigen::VectorXd::Constant( 4, 0.1 ), updateFunction );
+        Eigen::MatrixXd testPartialWrtArcwisePerpendicular =
+                calculateAccelerationWrtParameterPartials( arcwisePerpendicularScaling, accelerationModel, Eigen::VectorXd::Constant( 4, 0.1 ), updateFunction );
+
+        // Validate that only one arc element is active (arc 0, i.e., column 0)
+        for ( int i = 0; i < 3; i++ )
+        {
+        for ( int j = 0; j < 4; j++ )
+        {
+                if ( j != 0 )
+                {
+                BOOST_CHECK_SMALL( partialWrtArcwiseSourceDirection( i, j ), 1.0E-15 );
+                BOOST_CHECK_SMALL( partialWrtArcwisePerpendicular( i, j ), 1.0E-15 );
+                }
+                else
+                {
+                BOOST_CHECK_SMALL( std::fabs( partialWrtArcwiseSourceDirection( i, j ) - partialWrtParallelScaling( i ) ), 1.0E-14 );
+                BOOST_CHECK_SMALL( std::fabs( partialWrtArcwisePerpendicular( i, j ) - partialWrtPerpendicularScaling( i ) ), 1.0E-14 );
+                }
+        }
+        }
+
+        // Compare analytical vs numerical partials
+        TUDAT_CHECK_MATRIX_CLOSE_FRACTION( partialWrtArcwiseSourceDirection, testPartialWrtArcwiseSourceDirection, 1.0E-12 );
+        TUDAT_CHECK_MATRIX_CLOSE_FRACTION( partialWrtArcwisePerpendicular, testPartialWrtArcwisePerpendicular, 1.0E-12 );
+
     }
 }
 

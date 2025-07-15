@@ -276,6 +276,91 @@ private:
     std::shared_ptr< interpolators::PiecewiseConstantInterpolator< double, double > > coefficientInterpolator_;
 };
 
+class ArcWiseRadiationPressureScalingFactor : public EstimatableParameter< Eigen::VectorXd >
+{
+public:
+    ArcWiseRadiationPressureScalingFactor(
+        const std::shared_ptr< electromagnetism::RadiationPressureAcceleration >& acceleration,
+        const std::vector< double >& timeLimits,
+        const EstimatebleParametersEnum parameterType,
+        const std::string& associatedBody,
+        const std::string& exertingBody )
+        : EstimatableParameter< Eigen::VectorXd >( parameterType, associatedBody, exertingBody ),
+          acceleration_( acceleration ), timeLimits_( timeLimits )
+    {
+        std::cout<< "ArcWiseRadiationPressureScalingFactor" << std::endl;
+        if( parameterType != arcwise_source_direction_radiation_pressure_scaling_factor &&
+            parameterType != arcwise_source_perpendicular_direction_radiation_pressure_scaling_factor )
+        {
+            throw std::runtime_error( "Inconsistent parameter type for arc-wise radiation pressure scaling factor" );
+        }
+
+        parameterSize_ = static_cast< int >( timeLimits.size( ) );
+        timeLimits_.push_back( std::numeric_limits< double >::max( ) );
+        parameterValues_ = std::vector< double >( parameterSize_, 1.0 );
+        fullParameterValues_ = parameterValues_;
+        fullParameterValues_.push_back( 1.0 );
+
+        typedef interpolators::OneDimensionalInterpolator< double, double > LocalInterpolator;
+
+        std::function< double( double ) > interpolatorFunction =
+            std::bind( static_cast< double ( LocalInterpolator::* )( const double ) >( &LocalInterpolator::interpolate ),
+                interpolator_, std::placeholders::_1 );
+
+        if( parameterType == arcwise_source_direction_radiation_pressure_scaling_factor )
+        {
+            acceleration_->setSourceDirectionScalingFunction( interpolatorFunction );
+        }
+        else
+        {
+            acceleration_->setPerpendicularSourceDirectionScalingFunction( interpolatorFunction );
+        }
+    }
+
+    //! Destructor
+    ~ArcWiseRadiationPressureScalingFactor() {}
+
+    Eigen::VectorXd getParameterValue( )
+    {
+        return utilities::convertStlVectorToEigenVector( parameterValues_ );
+    }
+
+    std::shared_ptr< interpolators::LookUpScheme< double > > getArcTimeLookupScheme( )
+    {
+        return interpolator_->getLookUpScheme( );
+    }
+
+    
+    void setParameterValue(Eigen::VectorXd parameterValue)
+    {
+        if( parameterValue.size( ) != parameterSize_ )
+        {
+            throw std::runtime_error( "Error: Arc-wise scaling vector size mismatch." );
+        }
+
+        parameterValues_ = utilities::convertEigenVectorToStlVector( parameterValue );
+        for( int i = 0; i < parameterSize_; i++ )
+        {
+            fullParameterValues_[ i ] = parameterValues_[ i ];
+        }
+        fullParameterValues_[ parameterSize_ ] = parameterValues_.back( );
+        interpolator_->resetDependentValues( fullParameterValues_ );
+    }
+
+    int getParameterSize( ) override
+    {
+        return parameterSize_;
+    }
+
+private:
+    std::shared_ptr< electromagnetism::RadiationPressureAcceleration > acceleration_;
+    std::vector< double > timeLimits_;
+    std::vector< double > parameterValues_;
+    std::vector< double > fullParameterValues_;
+    std::shared_ptr< interpolators::PiecewiseConstantInterpolator< double, double > > interpolator_;
+    int parameterSize_;
+};
+
 }  // namespace estimatable_parameters
 
 }  // namespace tudat
