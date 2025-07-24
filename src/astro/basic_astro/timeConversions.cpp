@@ -17,6 +17,28 @@
 
 namespace tudat
 {
+
+//! Function to determine whether a time scale is a general, relativistic time scale.
+bool isTimeScaleRelativistic( const basic_astrodynamics::TimeScales originalTimeScale )
+{
+    bool isRelativistic = 0;
+    switch( originalTimeScale )
+    {
+    case basic_astrodynamics::body_centered_coordinate_time_scale:
+        isRelativistic = 1;
+        break;
+    case basic_astrodynamics::barycentric_coordinate_time_scale:
+        isRelativistic = 1;
+        break;
+    case basic_astrodynamics::local_proper_time_scale:
+        isRelativistic = 1;
+        break;
+    default:
+        std::cerr<<"Error when getting relativistic time scale, input was "<<originalTimeScale<<std::endl;
+    }
+    return isRelativistic;
+}
+
 namespace basic_astrodynamics
 {
 

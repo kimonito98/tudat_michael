@@ -1349,6 +1349,18 @@ void checkPropagatedStatesFeasibility( const std::shared_ptr< SingleArcPropagato
 
             break;
         }
+        case proper_time: {
+            // Check input feasibility
+            std::shared_ptr< RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType > > properTimePropagatorSettings =
+                    std::dynamic_pointer_cast< RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType > >( propagatorSettings );
+            if( properTimePropagatorSettings == nullptr )
+            {
+                throw std::runtime_error( "Error, input type for proper time dynamics is inconsistent when checking dynamics feasibility" );
+            }
+
+            break;
+        }
+        
         default:
             throw std::runtime_error( "Error, integrated state type " + std::to_string( propagatorSettings->getStateType( ) ) +
                                       " not recognized when checking dynamics feasibility" );
