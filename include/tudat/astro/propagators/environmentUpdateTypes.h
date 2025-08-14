@@ -33,7 +33,7 @@ enum EnvironmentModelsToUpdate {
     cannonball_radiation_pressure_target_model_update = 7,
     panelled_radiation_pressure_target_model_update = 8,
     body_segment_orientation_update = 9,
-    space_time_metric_update = 10
+    //space_time_metric_update = 10
 };
 
 //! Function to extend existing list of required environment update types

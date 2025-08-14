@@ -1618,7 +1618,7 @@ public:
         const std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >& dependentVariablesToSave = { },
         const std::shared_ptr< SingleArcPropagatorProcessingSettings > outputSettings = std::make_shared< SingleArcPropagatorProcessingSettings >( ) ):
     SingleArcPropagatorSettings< StateScalarType, TimeType >(proper_time,
-                                                            Eigen::Matrix< double, 1, 1 >::Zero( ),
+                                                            Eigen::Matrix< StateScalarType, 1, 1 >::Zero( ),
                                                             initialTime,
                                                             integratorSettings,
                                                             terminationSettings,
@@ -2682,6 +2682,21 @@ std::map< IntegratedStateType, std::vector< std::tuple< std::string, std::string
             integratedStateList[ custom_state ] = customList;
             break;
         }
+        case proper_time:
+        {
+            std::shared_ptr< RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType > > properTimePropagatorSettings =
+                    std::dynamic_pointer_cast< RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType > >( propagatorSettings );
+            
+            // Retrieve list of integrated bodies in correct formatting.
+            std::vector< std::tuple< std::string, std::string, PropagatorType > > integratedBodies;
+            integratedBodies.push_back(
+                    std::make_tuple( properTimePropagatorSettings->getReferencePointId( ).first,
+                                     properTimePropagatorSettings->getReferencePointId( ).second,
+                                     PropagatorType( ) ) );
+            integratedStateList[ proper_time ] = integratedBodies;
+
+            break;
+        }
         default:
             throw std::runtime_error( "Error, could not process integrated state type in getIntegratedTypeAndBodyList " +
                                       std::to_string( propagatorSettings->getStateType( ) ) );
@@ -2721,6 +2736,10 @@ inline std::map< std::pair< int, int >, std::string > getProcessedStateStrings(
                     currentString += ", in quaternions and body-fixed angular velocity, of body " + std::get< 0 >( bodyList.at( i ) );
                     break;
                 case body_mass_state:
+                    stateSize = getSingleIntegrationSize( stateType );
+                    currentString += " of body " + std::get< 0 >( bodyList.at( i ) );
+                    break;
+                case proper_time:
                     stateSize = getSingleIntegrationSize( stateType );
                     currentString += " of body " + std::get< 0 >( bodyList.at( i ) );
                     break;
@@ -2779,6 +2798,10 @@ inline std::map< std::pair< int, int >, std::string > getPropagatedStateStrings(
                     break;
                 }
                 case body_mass_state:
+                    stateSize = getSingleIntegrationSize( stateType );
+                    currentString += " of body " + std::get< 0 >( bodyList.at( i ) );
+                    break;
+                case proper_time:
                     stateSize = getSingleIntegrationSize( stateType );
                     currentString += " of body " + std::get< 0 >( bodyList.at( i ) );
                     break;

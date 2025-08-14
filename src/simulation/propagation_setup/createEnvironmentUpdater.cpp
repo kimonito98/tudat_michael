@@ -237,6 +237,8 @@ void removePropagatedStatesFomEnvironmentUpdates(
                     break;
                 case custom_state:
                     break;
+                case proper_time:
+                    break;
                 default:
                     throw std::runtime_error( "Error when removing propagated states from environment updates, state type " +
                                               std::to_string( it->first ) + " not recognized." );

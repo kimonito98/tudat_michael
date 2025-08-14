@@ -28,6 +28,7 @@ double combineTimeDifferenceFunction( const std::vector< std::function< double( 
 std::function< double( const double ) > TimeEphemerisFromPostNewtonianExpansion::getTimeDifferenceFunction(
         const TimeScales inputScale, const TimeScales outputScale, const std::string pointIdentifier )
 {
+    std::cout<<"getTimeDifferenceFunction"<<std::endl;
     std::function< double( const double ) > timeDifferenceFunction;
 
     typedef interpolators::OneDimensionalInterpolator< double, double > LocalInterpolator;

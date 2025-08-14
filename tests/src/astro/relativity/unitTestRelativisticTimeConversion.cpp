@@ -67,6 +67,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
 
     std::string spiceKernelsPath = paths::getSpiceKernelPath( );
     std::string textKernelsPath = paths::getSpiceKernelPath( ) + "/inpop19a_TDB_m100_p100_asc";
+    std::string timeDifferenceFileName = spiceKernelsPath + "/inpop19a_TCB_m100_p100_asc/inpop19a_TCB_m100_p100_asc_pos_TCG.asc";
 
     //Load spice kernels.
     std::string kernelsPath = paths::getSpiceKernelPath( );
@@ -173,7 +174,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     // bodies.at( "Body2000010" )->setEphemeris( createTabulatedEphemerisFromSpice(
     //                                         "Body2000010", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
 
-    setGlobalFrameBodyEphemerides( bodies.getMap(), "SSB", "ECLIPJ2000" );
+    setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
 
     std::vector< std::string > externalBodies;
     for ( const auto& [id, name] : bodyIdToName )
@@ -185,20 +186,33 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     }
 
     double startTime = initialEphemerisTime;
-    double endTime = finalEphemerisTime;
-    double timeStep = 6000.0;
+    double endTime = initialEphemerisTime + 86400 * 10; //#finalEphemerisTime;
+    double timeStep = 3*3600; //6000.0;
 
     std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings = numerical_integrators::rungeKutta4Settings( timeStep );
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
-                
+
+    auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
+                true,
+                true,
+                1,
+                TUDAT_NAN,
+                std::make_shared< PropagationPrintSettings >( true, false, 1 * 86400, 0, true, true, true, true, false, false ) );
+    std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
+
     std::shared_ptr< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings<double, double > > properTimeEquationSettings =
             std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings<double, double > >(  
-                centralBody, externalBodies, startTime, integratorSettings, terminationSettings );
+                centralBody, externalBodies, startTime, integratorSettings, terminationSettings,
+                ( std::map< std::string, std::pair< int, int > >( ) ),
+                std::vector< std::string  >( ),
+                &basic_astrodynamics::doDummyTimeConversion< double >,
+                1.0,
+                dependentVariablesList,
+                outputProcessingSettings );
 
-    SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >( bodies, integratorSettings, properTimeEquationSettings );
+    SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >( bodies, properTimeEquationSettings );
 
 
-    std::string timeDifferenceFileName = textKernelsPath + "inpop19a_TDB_m100_p100_asc_pos_TCG.asc" ;
     std::shared_ptr< interpolators::OneDimensionalInterpolator< double, long double > > timeEphemerisInterpolator =
             input_output::createLongInpopTimeEphemerisInterpolator( timeDifferenceFileName );
     std::map< double, double > timeDifferences2;
@@ -207,10 +221,16 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     long double initialDifference = 0.0L;
     long double rawDifference;
 
-    std::shared_ptr< TimeEphemeris > earthTimeEphemeris = bodies.at( "Earth" )->getTimeScaleConverter( );
+    std::shared_ptr< Body > earth = bodies.getBody( "Earth" );
+    std::cout<<"Earth exists"<<std::endl;
+    std::shared_ptr< TimeEphemeris > earthTimeEphemeris = bodies.getBody( "Earth" )->getTimeScaleConverter( );
+    std::cout<<"TimeEphemeris"<<std::endl;
+
     std::function< double( const double ) > timeDifferenceFunction =
             earthTimeEphemeris->getTimeDifferenceFunction( basic_astrodynamics::barycentric_coordinate_time_scale, basic_astrodynamics::body_centered_coordinate_time_scale, "" );
-    double testTimeStep = 7100.0; //To prevent excessive resonance with integration step.
+    std::cout<<"getTimeDifferenceFunction"<<std::endl;
+    
+            double testTimeStep = 7100.0; //To prevent excessive resonance with integration step.
     double currentTime = initialEphemerisTime + 5.0 * timeStep;
     while( currentTime < finalEphemerisTime - 5.0 * timeStep )
     {
@@ -221,6 +241,8 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
         {
             initialDifference = rawDifference;
         }
+        std::cout<<"dummy20"<<std::endl;
+
 
         timeDifferences2[ currentTime ] = static_cast< double >( rawDifference - initialDifference );
         //std::cout<<timeDifferenceFunction( timeMap->first )<<" "<<timeMap->second<<" "<<

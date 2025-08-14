@@ -43,7 +43,8 @@ namespace tudat
  *  time conversions, such as TCG <-> TCB (1st and 2nd order). The conversion between time scale t1 and time scale t2 are assumed to be of the
  *  form t2-t1 = integral(A(t))+B(t)
  */
- template< typename StateScalarType = double, typename TimeType = double >
+
+template< typename StateScalarType = double, typename TimeType = double >
 class RelativisticTimeStateDerivative: public propagators::SingleStateTypeDerivative< StateScalarType, TimeType >
 {
     using propagators::SingleStateTypeDerivative< StateScalarType, TimeType >::calculateSystemStateDerivative;
@@ -61,24 +62,24 @@ public:
 
 
     void convertCurrentStateToGlobalRepresentation(
-        const Eigen::Matrix< double, Eigen::Dynamic, 1 >& internalSolution,
-        const double& time,
-        Eigen::Block< Eigen::Matrix< double, Eigen::Dynamic, 1 > > currentCartesianLocalSolution ) override
+        const Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 >& internalSolution,
+        const TimeType& time,
+        Eigen::Block< Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 > > currentCartesianLocalSolution ) override
     {
         currentCartesianLocalSolution = internalSolution;
     }
 
 
-    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic > convertFromOutputSolution(
-            const Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic >& outputSolution, const double& time )
+    Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic > convertFromOutputSolution(
+            const Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic >& outputSolution, const TimeType& time ) override
     {
         return outputSolution;
     }
 
     void convertToOutputSolution(
-        const Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic >& internalSolution,
-        const double& time,
-        Eigen::Block< Eigen::Matrix< double, Eigen::Dynamic, 1 > > currentCartesianLocalSolution ) override
+        const Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic >& internalSolution,
+        const TimeType& time,
+        Eigen::Block< Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 > > currentCartesianLocalSolution ) override
     {
         currentCartesianLocalSolution = internalSolution;
     }
@@ -828,3 +829,4 @@ private:
 
 }
 #endif // TUDAT_RELATIVISTICTIMESTATEDERIVATIVE_H
+
