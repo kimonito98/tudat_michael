@@ -1148,7 +1148,8 @@ public:
             std::vector<std::string>{ referencePointIdentifier.first }
         ),
         referencePointIdentifier_( referencePointIdentifier ),
-        stateDerivativeType_( stateDerivativeType )
+        stateDerivativeType_( stateDerivativeType ),
+        bodies_(bodies)
     { 
         std::cout<<"RelativisticStateIntegratedStateProcessor"<<std::endl;
     }

@@ -1616,14 +1616,38 @@ public:
         const std::function< double( const double ) > timeVariableConversionFunction = &basic_astrodynamics::doDummyTimeConversion< double >,
         const double distanceScalingFactor = 1.0,
         const std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >& dependentVariablesToSave = { },
+        const std::shared_ptr< SingleArcPropagatorProcessingSettings > outputSettings = std::make_shared< SingleArcPropagatorProcessingSettings >( ) )
+        : RelativisticTimeStatePropagatorSettings(
+              referencePointId,
+              relativisticStateDerivativeType,
+              Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 >::Zero( 1 ),
+              initialTime,
+              integratorSettings,
+              terminationSettings,
+              timeVariableConversionFunction,
+              distanceScalingFactor,
+              dependentVariablesToSave,
+              outputSettings )
+    { }
+
+    RelativisticTimeStatePropagatorSettings(
+        const std::pair< std::string, std::string > referencePointId,
+        const RelativisticTimeStateDerivativeType relativisticStateDerivativeType,
+        const Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 >& initialState,
+        const TimeType& initialTime,
+        const std::shared_ptr< numerical_integrators::IntegratorSettings< TimeType > > integratorSettings,
+        const std::shared_ptr< PropagationTerminationSettings > terminationSettings,
+        const std::function< double( const double ) > timeVariableConversionFunction = &basic_astrodynamics::doDummyTimeConversion< double >,
+        const double distanceScalingFactor = 1.0,
+        const std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >& dependentVariablesToSave = { },
         const std::shared_ptr< SingleArcPropagatorProcessingSettings > outputSettings = std::make_shared< SingleArcPropagatorProcessingSettings >( ) ):
-    SingleArcPropagatorSettings< StateScalarType, TimeType >(proper_time,
-                                                            Eigen::Matrix< StateScalarType, 1, 1 >::Zero( ),
-                                                            initialTime,
-                                                            integratorSettings,
-                                                            terminationSettings,
-                                                            dependentVariablesToSave,
-                                                            outputSettings ),
+    SingleArcPropagatorSettings< StateScalarType, TimeType >( proper_time,
+                                                              initialState,
+                                                              initialTime,
+                                                              integratorSettings,
+                                                              terminationSettings,
+                                                              dependentVariablesToSave,
+                                                              outputSettings ),
           relativisticStateDerivativeType_( relativisticStateDerivativeType ),
           referencePointId_( referencePointId ),
           timeVariableConversionFunction_( timeVariableConversionFunction ),
@@ -1793,7 +1817,8 @@ public:
             std::make_shared< SingleArcPropagatorProcessingSettings >( ) )
         : RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType >(
               referencePointId, first_order_bodycentric_to_topocentric,
-              initialBodyStates, initialTime, integratorSettings, terminationSettings, dependentVariablesToSave, outputSettings ),
+              initialBodyStates, initialTime, integratorSettings, terminationSettings,
+              &basic_astrodynamics::doDummyTimeConversion< double >, 1.0, dependentVariablesToSave, outputSettings ),
           useAccelerationTerm_( useAccelerationTerm ),
           maximumSphericalHarmonicDegree_( maximumSphericalHarmonicDegree ),
           useTimeDependentBodyFixedPosition_( useTimeDependentBodyFixedPosition ),
