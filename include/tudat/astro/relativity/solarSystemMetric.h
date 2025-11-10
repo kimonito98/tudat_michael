@@ -28,9 +28,11 @@ public:
             const std::pair< int, int >& maximumDegreeAndOrder,
             basic_mathematics::LegendreCache* legendreCache,
             const std::function< Eigen::Matrix3d( ) > currentRotationToBodyFixedFrameDerivative ):
-        sphericalHarmonicGravityField_( sphericalHarmonicGravityField ), centralBodyPositionFunction_( centralBodyPositionFunction ),
-        maximumDegreeAndOrder_( maximumDegreeAndOrder ), legendreCache_( legendreCache ),
-        currentRotationToBodyFixedFrameDerivative_( currentRotationToBodyFixedFrameDerivative )
+        sphericalHarmonicGravityField_( sphericalHarmonicGravityField ),
+        currentRotationToBodyFixedFrameDerivative_( currentRotationToBodyFixedFrameDerivative ),
+        centralBodyPositionFunction_( centralBodyPositionFunction ),
+        maximumDegreeAndOrder_( maximumDegreeAndOrder ),
+        legendreCache_( legendreCache )
     {
         using namespace std::placeholders;
         
@@ -152,11 +154,14 @@ public:
             const std::map< int, std::shared_ptr< SphericalHarmonicWrapper > > bodySphericalHarmonicGravityWrappers =
             ( std::map< int, std::shared_ptr< SphericalHarmonicWrapper > >( ) ) ):
         Metric( ),
-        bodyList_( bodyList ), bodyGravitationalParameterFunctions_( bodyGravitationalParameterFunctions ),
-        bodyStateFunctions_( bodyStateFunctions ), secondOrderBodyList_( secondOrderBodyList ),
+        bodyList_( bodyList ),
+        bodyGravitationalParameterFunctions_( bodyGravitationalParameterFunctions ),
+        bodyStateFunctions_( bodyStateFunctions ),
+        secondOrderBodyList_( secondOrderBodyList ),
         bodyAccelerationFunctions_( bodyAccelerationFunctions ),
-        ppnParameterSet_( ppnParameterSet), bodyAngularMomentumFunctions_( bodyAngularMomentumFunctions ),
-        bodySphericalHarmonicGravityWrappers_( bodySphericalHarmonicGravityWrappers )
+        bodyAngularMomentumFunctions_( bodyAngularMomentumFunctions ),
+        bodySphericalHarmonicGravityWrappers_( bodySphericalHarmonicGravityWrappers ),
+        ppnParameterSet_( ppnParameterSet )
     {
         currentBodyGravitationalParameters_.resize( bodyList_.size( ) );
         currentBodyStates_.resize( bodyList_.size( ) );

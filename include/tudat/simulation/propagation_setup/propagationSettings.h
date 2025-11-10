@@ -1603,7 +1603,7 @@ Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 > convertScalarToVectorStateFu
 }
 
 template< typename StateScalarType = double, typename TimeType = double >
-class RelativisticTimeStatePropagatorSettings : public SingleArcPropagatorSettings< StateScalarType, TimeType > 
+class RelativisticTimeStatePropagatorSettings : public SingleArcPropagatorSettings< StateScalarType, TimeType >
 {
 public:
 
@@ -1674,11 +1674,6 @@ public:
     {
         return distanceScalingFactor_;
     }
-
-    //void resetIntegratedStateModels( const simulation_setup::SystemOfBodies& bodies )  override 
-    //{ 
-        // relativisticTimeCorrectionModelMap_
-    //}
 
 protected:
     RelativisticTimeStateDerivativeType relativisticStateDerivativeType_;
@@ -1856,6 +1851,38 @@ private:
     int maximumSphericalHarmonicDegree_;
     bool useTimeDependentBodyFixedPosition_;
     std::vector< std::string > topocentricExternalBodies_;
+};
+
+template< typename StateScalarType = double, typename TimeType = double >
+class DirectRelativisticTimePropagatorSettings : public RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType >
+{
+public:
+    DirectRelativisticTimePropagatorSettings(
+        const std::pair< std::string, std::string >& referencePointId,
+        const TimeType& initialTime,
+        const std::shared_ptr< numerical_integrators::IntegratorSettings< TimeType > > integratorSettings,
+        const std::shared_ptr< PropagationTerminationSettings > terminationSettings,
+        const std::function< double( const double ) > timeVariableConversionFunction = &basic_astrodynamics::doDummyTimeConversion< double >,
+        const double distanceScalingFactor = 1.0,
+        const std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >& dependentVariablesToSave = { },
+        const std::shared_ptr< SingleArcPropagatorProcessingSettings > outputSettings =
+            std::make_shared< SingleArcPropagatorProcessingSettings >( ) )
+        : RelativisticTimeStatePropagatorSettings< StateScalarType, TimeType >(
+            referencePointId,
+            direct_from_metric,
+            initialTime,
+            integratorSettings,
+            terminationSettings,
+            timeVariableConversionFunction,
+            distanceScalingFactor,
+            dependentVariablesToSave,
+            outputSettings )
+    { }
+
+    void resetIntegratedStateModels( const simulation_setup::SystemOfBodies& bodies ) override
+    {
+        // No additional models required for direct-from-metric propagation.
+    }
 };
 
 

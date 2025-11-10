@@ -27,6 +27,8 @@ set(acceleration_partials_SOURCES
   "einsteinInfeldHoffmannPartials.cpp"
   "yarkovskyAccelerationPartial.cpp"
   "fullRadiationPressureAccelerationPartial.cpp"
+  "directFromMetricProperTimeDerivativePartials.cpp"
+  "firstOrderBarycentricToBodyCentricTimeDerivativePartial.cpp"
 )
 
 # Set the header files.
@@ -51,10 +53,11 @@ set(acceleration_partials_HEADERS
   "einsteinInfeldHoffmannPartials.h"
   "yarkovskyAccelerationPartial.h"
   "fullRadiationPressureAccelerationPartial.h"
+  "directFromMetricProperTimeDerivativePartials.h"
+  "firstOrderBarycentricToBodyCentricTimeDerivativePartial.h"
 )
 
 TUDAT_ADD_LIBRARY("acceleration_partials"
         "${acceleration_partials_SOURCES}"
         "${acceleration_partials_HEADERS}"
         )
-

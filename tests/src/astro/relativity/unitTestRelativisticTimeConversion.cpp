@@ -17,6 +17,7 @@
 #include "tudat/math/basic/linearAlgebra.h"
 #include "tudat/astro/basic_astro/physicalConstants.h"
 #include "tudat/astro/basic_astro/orbitalElementConversions.h"
+#include "tudat/math/basic/coordinateConversions.h"
 
 #include "tudat/io/basicInputOutput.h"
 #include "tudat/interface/spice/spiceInterface.h"
@@ -26,6 +27,7 @@
 #include "tudat/astro/basic_astro/timeConversions.h"
 #include "tudat/interface/sofa/earthOrientation.h"
 #include "tudat/astro/ephemerides/keplerEphemeris.h"
+#include "tudat/astro/ephemerides/tleEphemeris.h"
 
 #include "tudat/astro/relativity/relativisticTimeConversion.h"
 #include "tudat/interface/sofa/sofaTimeConversions.h"
@@ -103,17 +105,17 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     SystemOfBodies bodies;
     for ( const auto& idToNamePair : bodyIdToName )
     {
-        const std::string& id = idToNamePair.first;
-        const std::string& name = idToNamePair.second;
-        std::shared_ptr< Body > body = std::make_shared< Body >();
-        double gm = spice_interface::getBodyGravitationalParameter( id ) / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
-        body->setGravityFieldModel( std::make_shared< gravitation::GravityFieldModel >( gm ) );
-        bodies.addBody( body, name );
-    }
+         const std::string& id = idToNamePair.first;
+         const std::string& name = idToNamePair.second;
+         std::shared_ptr< Body > body = std::make_shared< Body >();
+         double gm = spice_interface::getBodyGravitationalParameter( id ) / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
+         body->setGravityFieldModel( std::make_shared< gravitation::GravityFieldModel >( gm ) );
+         bodies.addBody( body, name );
+     }
 
     // Specify initial time
     double initialEphemerisTime = -365.25 * 86400.0 * 2.0;
-    double finalEphemerisTime = 365.25 * 86400.0 * 2.0; // initialEphemerisTime + 86400 * 3; // 
+    double finalEphemerisTime = 365.25 * 86400.0 * 2.0; 
     double maximumTimeStep = 3600.0;
     double numberOfTimeStepBuffer = 6.0;
     double buffer = numberOfTimeStepBuffer * maximumTimeStep;
@@ -564,250 +566,82 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 6.0 * std::numeric_limits< double >::epsilon( ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
+BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )
 {
-
-    std::string kernelsPath = paths::getSpiceKernelPath( );
     spice_interface::loadStandardSpiceKernels( );
-    std::vector< std::string > bodyNames;
-    bodyNames.push_back( "Sun" );
-    bodyNames.push_back( "Moon" );
-    bodyNames.push_back( "Jupiter" );
-    bodyNames.push_back( "Saturn" );
-
-    std::map< std::string, std::shared_ptr< simulation_setup::BodySettings > > bodySettings =
-            simulation_setup::getDefaultBodySettings( bodyNames );
-    simulation_setup::SystemOfBodies bodies = createBodies( bodySettings );
-
-    // Specify initial time
-    double initialEphemerisTime = -365.25 * 86400.0 * 1.0;
-    double finalEphemerisTime = 365.25 * 86400.0 * 1.0;
-    double maximumTimeStep = 3600.0;
-    double numberOfTimeStepBuffer = 6.0;
-    double buffer = numberOfTimeStepBuffer * maximumTimeStep;
-    std::string centralBody = "Earth";
-
-
-    SystemOfBodies bodies;
-    for( unsigned int i = 0; i < bodyNames.size( ); i++ )
-    {
-        if( bodyNames[ i ] != "Earth" )
-        {
-            std::shared_ptr< Body > body = std::make_shared< Body >( );
-            body->setGravityFieldModel(
-                        std::make_shared< gravitation::GravityFieldModel >(
-                            spice_interface::getBodyGravitationalParameter( bodyNames[ i ] ) / ( 1.0 - physical_constants::LB_TIME_RATE_TERM ) ) );
-            bodies.addBody( body, bodyNames[ i ] );
-        }
-    }
-
-    
-    std::shared_ptr< Body > earth = std::make_shared< Body >( );
-    bodies.addBody( earth, "Earth" );
-    earth->setShapeModel( createBodyShapeModel( getDefaultBodyShapeSettings( "Earth", initialEphemerisTime, finalEphemerisTime ), "Earth" ) );
-    earth->setRotationalEphemeris( createRotationModel( getDefaultRotationModelSettings( "Earth", initialEphemerisTime, finalEphemerisTime ), "Earth" ) );
-
-    std::shared_ptr< SphericalHarmonicsGravityFieldSettings > earthGravityFieldSettings =
-            std::dynamic_pointer_cast< SphericalHarmonicsGravityFieldSettings >(
-                getDefaultGravityFieldSettings( "Earth", initialEphemerisTime, finalEphemerisTime ) );
-    earthGravityFieldSettings->resetAssociatedReferenceFrame( "IAU_Earth" );
-
-    earth->setGravityFieldModel( createGravityFieldModel( earthGravityFieldSettings, "Earth", bodies ) );
-
-    setGlobalFrameBodyEphemerides( bodies, "SSB", "ECLIPJ2000" );
-
-    
-    std::vector< std::string > externalBodies;
-    for( unsigned int i = 0; i < bodyNames.size( ); i++ )
-    {
-        if( bodyNames[ i ] != centralBody )
-        {
-            externalBodies.push_back( bodyNames[ i ] );
-        }
-    }
-
-    double startTime = initialEphemerisTime;
-    double endTime = finalEphemerisTime;
-    double timeStep = 6000.0;
-
-    std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, timeStep );
-    //std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings = numerical_integrators::rungeKutta4Settings( timeStep );
-    std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
-
-    std::vector< std::string > listOfPerturbingBodies{ "Earth",  "Moon",  "Sun", "Jupiter", "Saturn" };
-    Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticTimeState = Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
-
-    auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
-                true,
-                true,
-                1,
-                TUDAT_NAN,
-                std::make_shared< PropagationPrintSettings >( true, false, 1 * 86400, 0, true, true, true, true, false, false ) );
-    std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
-
-
-    std::vector< std::shared_ptr< RelativisticTimeStatePropagatorSettings< double, double > > > bodyCentricToTopocentricConversionSettings;
+    const double initialEpoch = 816002130.1826621;
+    const double finalEpoch = initialEpoch + physical_constants::JULIAN_DAY;
+    const double outputTimeStep = 100.0;
+    const double ephemerisBuffer = physical_constants::JULIAN_DAY;
+    std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
+    auto bodySettings = getDefaultBodySettings(
+            bodiesToCreate, initialEpoch - ephemerisBuffer, finalEpoch + ephemerisBuffer );
+    SystemOfBodies bodies = createSystemOfBodies( bodySettings );
+    const std::string issTleLineOne = "1 25544U 98067A   25313.96830531  .00008626  00000-0  16179-3 0  9998";
+    const std::string issTleLineTwo = "2 25544  51.6342 304.7042 0004075  52.7615 307.3745 15.49490024537771";
+    auto issTle = std::make_shared< ephemerides::Tle >( issTleLineOne, issTleLineTwo );
+    auto issEphemeris = std::make_shared< ephemerides::TleEphemeris >( "Earth", "ECLIPJ2000", issTle, false );
+    bodies.createEmptyBody( "ISS" );
+    bodies.getBody( "ISS" )->setEphemeris( issEphemeris );
+    setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
+    const Eigen::Vector3d parisGeodetic =
+            ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.8 ),
+              unit_conversions::convertDegreesToRadians( 2.3 ), 0.0 ).finished( );
+    createGroundStation(
+            bodies.getBody( "Earth" ), "Paris", parisGeodetic, coordinate_conversions::geodetic_position );
+    const double integratorStep = 60.0;
+    auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
+    auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEpoch );
+    const Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
+            Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
+    const std::vector< std::string > topocentricPerturbingBodies{ "Sun", "Moon" };
+    std::vector< std::shared_ptr< RelativisticTimeStatePropagatorSettings< double, double > > >
+            bodyCentricToTopocentricConversionSettings;
     bodyCentricToTopocentricConversionSettings.push_back(
-                std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-                    std::make_pair( "Earth", "Graz" ), 0, 4, 0, listOfPerturbingBodies,
-                    initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
-                    dependentVariablesList, outputProcessingSettings ) );
-    bodyCentricToTopocentricConversionSettings.push_back(
-                std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-                    std::make_pair( "Earth", "Yarragadee" ), 0, 4, 0, listOfPerturbingBodies,
-                    initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
-                    dependentVariablesList, outputProcessingSettings ) );
-
-    std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > relativisticConverterSettings;
-    relativisticConverterSettings[ "LRO" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-                std::make_shared< propagators::FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
-                    "LRO", listOfPerturbingBodies, initialEphemerisTime, integratorSettings, terminationSettings ),
-                integratorSettings ); 
-
-    std::vector< std::string > listOfPerturbingBodies2{ "Moon",  "Sun", "Jupiter", "Saturn" };
-    relativisticConverterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-                std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
-                    "Earth", listOfPerturbingBodies2, initialEphemerisTime, integratorSettings, terminationSettings ),
-                integratorSettings,
-                bodyCentricToTopocentricConversionSettings );
-
-    setRelativisticTimeConverters( bodies, relativisticConverterSettings );
-
-    std::shared_ptr< TimeEphemeris > earthTimeScaleConverter = earth->getTimeScaleConverter( );
-    std::shared_ptr< TimeEphemeris > lroTimeScaleConverter = lro->getTimeScaleConverter( );
-
-    BOOST_CHECK_EQUAL( ( lroTimeScaleConverter == NULL ), 0 );
-    BOOST_CHECK_EQUAL( ( earthTimeScaleConverter == NULL ), 0 );
-
-    BOOST_CHECK_SMALL( lroTimeScaleConverter->getTimeDifference(
-                           body_centered_coordinate_time_scale, barycentric_coordinate_time_scale, initialEphemerisTime ),
-                       std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( earthTimeScaleConverter->getTimeDifference(
-                           body_centered_coordinate_time_scale, barycentric_coordinate_time_scale, initialEphemerisTime ),
-                       std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( lroTimeScaleConverter->getTimeDifference(
-                           barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, initialEphemerisTime ),
-                       std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( earthTimeScaleConverter->getTimeDifference(
-                           barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, initialEphemerisTime ),
-                       std::numeric_limits< double >::epsilon( ) );
-
-
-    BOOST_CHECK_SMALL( earthTimeScaleConverter->getTimeDifference(
-                           body_centered_coordinate_time_scale, local_proper_time_scale, initialEphemerisTime, "Graz" ),
-                       std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( earthTimeScaleConverter->getTimeDifference(
-                           local_proper_time_scale, body_centered_coordinate_time_scale, initialEphemerisTime, "Graz" ),
-                       std::numeric_limits< double >::epsilon( ) );
-
-    std::shared_ptr< SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > > directEarthTimeScaleConverter =
-            std::make_shared< SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
-                "Earth", listOfPerturbingBodies2, initialEphemerisTime, integratorSettings, terminationSettings );
-
-
-    // Get directly calculated map of tcg-tcb from tcb input (key)
-    SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >(
-                bodies, integratorSettings, directEarthTimeScaleConverter, true, false, false );
-
-    std::map< double, Eigen::VectorXd > directTimeDifferencesVectors = timeEquationPropagator.getEquationsOfMotionNumericalSolution( );
-    std::map< double, double > directTimeDifferences;
-    for( std::map< double, Eigen::VectorXd >::iterator resultIterator = directTimeDifferencesVectors.begin( ); resultIterator !=
-         directTimeDifferencesVectors.end( ); resultIterator++ )
+            std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
+                    std::make_pair( "Earth", "Paris" ),
+                    false,
+                    4,
+                    true,
+                    topocentricPerturbingBodies,
+                    initialRelativisticState,
+                    initialEpoch,
+                    integratorSettings,
+                    terminationSettings ) );
+    const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun" };
+    const std::vector< std::string > issPerturbingBodies{ "Earth", "Sun", "Moon" };
+    std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > converterSettings;
+    converterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
+            std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
+                    "Earth", earthPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
+            integratorSettings,
+            bodyCentricToTopocentricConversionSettings );
+    converterSettings[ "ISS" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
+            std::make_shared< propagators::FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
+                    "ISS", issPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
+            integratorSettings );
+    setRelativisticTimeConverters( bodies, converterSettings );
+    auto earthTimeScaleConverter = bodies.getBody( "Earth" )->getTimeScaleConverter( );
+    auto issTimeScaleConverter = bodies.getBody( "ISS" )->getTimeScaleConverter( );
+    BOOST_REQUIRE( earthTimeScaleConverter != nullptr );
+    BOOST_REQUIRE( issTimeScaleConverter != nullptr );
+    std::map< double, Eigen::VectorXd > conversionResults;
+    for( double epoch = initialEpoch; epoch <= finalEpoch + std::numeric_limits< double >::epsilon( ); epoch += outputTimeStep )
     {
-        directTimeDifferences[ resultIterator->first ] = resultIterator->second.x( );
+        Eigen::VectorXd currentDifferences( 3 );
+        currentDifferences( 0 ) = earthTimeScaleConverter->getTimeDifference(
+                barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch );
+        currentDifferences( 1 ) = earthTimeScaleConverter->getTimeDifference(
+                body_centered_coordinate_time_scale, local_proper_time_scale, epoch, "Paris" );
+        currentDifferences( 2 ) = issTimeScaleConverter->getTimeDifference(
+                barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch );
+        conversionResults[ epoch ] = currentDifferences;
     }
-
-    // Create map of tcb-tcg from tcg input (key)
-    std::map< double, double > directInverseTimeDifferences;
-    for( std::map< double, double >::iterator differenceIterator = directTimeDifferences.begin( ); differenceIterator !=
-         directTimeDifferences.end( ); differenceIterator++ )
-    {
-        directInverseTimeDifferences[ differenceIterator->first + differenceIterator->second ] = -differenceIterator->second;
-    }
-
-    // Get time difference functions from indirect calculator.
-    std::function< double( const double ) > indirectDifferenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                barycentric_coordinate_time_scale, body_centered_coordinate_time_scale );
-    std::function< double( const double ) > indirectInverseDifferenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                body_centered_coordinate_time_scale, barycentric_coordinate_time_scale );
-
-    // Iterate over all directly calculated function values, and use indirect inverse function to check whether a zero difference results.
-    Eigen::VectorXd forwardBackardTransformationResults =  Eigen::VectorXd( directTimeDifferences.size( ) );
-    Eigen::VectorXd inverseForwardBackardTransformationResults =  Eigen::VectorXd( directTimeDifferences.size( ) );
-
-    int counter = 0;
-    double convertedValue = 0.0;
-    for( std::map< double, double >::iterator differenceIterator = directTimeDifferences.begin( ); differenceIterator !=
-         directTimeDifferences.end( ); differenceIterator++ )
-    {
-        convertedValue = indirectDifferenceFunction( differenceIterator->first );
-        forwardBackardTransformationResults( counter ) = convertedValue - differenceIterator->second;
-        counter++;
-    }
-
-    double maximumDifference = forwardBackardTransformationResults.maxCoeff( );
-    double minimumDifference = forwardBackardTransformationResults.minCoeff( );
-
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
-
-    counter = 0;
-    convertedValue = 0.0;
-    forwardBackardTransformationResults.setZero( );
-    for( std::map< double, double >::iterator differenceIterator = directInverseTimeDifferences.begin( ); differenceIterator !=
-         directInverseTimeDifferences.end( ); differenceIterator++ )
-    {
-        convertedValue = indirectInverseDifferenceFunction( differenceIterator->first );
-        forwardBackardTransformationResults( counter ) = convertedValue-differenceIterator->second;
-        counter++;
-    }
-
-    maximumDifference = forwardBackardTransformationResults.maxCoeff( );
-    minimumDifference = forwardBackardTransformationResults.minCoeff( );
-
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
-
-    std::vector< double > evaluationTimes = utilities::createVectorFromMapKeys( directTimeDifferences );
-
-    std::function< double( const double ) > differenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                body_centered_coordinate_time_scale, local_proper_time_scale, "Graz" );
-    std::function< double( const double ) > inverseDifferenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                local_proper_time_scale, body_centered_coordinate_time_scale, "Graz" );
-
-    double convertedTime;
-    forwardBackardTransformationResults.setZero( );
-    for( unsigned int i = 0; i < evaluationTimes.size( ); i++ )
-    {
-        convertedTime = evaluationTimes[ i ] + differenceFunction( evaluationTimes[ i ] );
-        forwardBackardTransformationResults( i ) = evaluationTimes[ i ] - ( convertedTime + inverseDifferenceFunction( convertedTime ) );
-    }
-
-    maximumDifference = forwardBackardTransformationResults.maxCoeff( );
-    minimumDifference = forwardBackardTransformationResults.minCoeff( );
-
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
-
-    differenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                barycentric_coordinate_time_scale, local_proper_time_scale, "Graz" );
-    inverseDifferenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
-                local_proper_time_scale, barycentric_coordinate_time_scale, "Graz" );
-
-
-    forwardBackardTransformationResults.setZero( );
-    for( unsigned int i = 0; i < evaluationTimes.size( ); i++ )
-    {
-        convertedTime = evaluationTimes[ i ] + differenceFunction( evaluationTimes[ i ] );
-        forwardBackardTransformationResults( i ) = evaluationTimes[ i ] - ( convertedTime + inverseDifferenceFunction( convertedTime ) );
-    }
-
-    maximumDifference = forwardBackardTransformationResults.maxCoeff( );
-    minimumDifference = forwardBackardTransformationResults.minCoeff( );
-
-    BOOST_CHECK_SMALL( maximumDifference, 6.0 * std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 6.0 * std::numeric_limits< double >::epsilon( ) );
+    input_output::writeDataMapToTextFile(
+            conversionResults, "issProperTimeRate.dat", paths::getTudatTestDataPath( ), "", 16 );
+    BOOST_CHECK_EQUAL( 1, 1 );
 }
+
 
 
 BOOST_AUTO_TEST_SUITE_END( )

@@ -11,9 +11,8 @@ namespace tudat
 namespace simulation_setup
 {
 
-template< typename StateScalarType = double, typename TimeType = double >
 std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
-        const std::shared_ptr< SpaceTimeMetricSettings > spaceTimeMetricSettings,
+        const std::shared_ptr< SpaceTimeMetricSettings >& spaceTimeMetricSettings,
         const SystemOfBodies& bodies )
 {
     std::shared_ptr< relativity::Metric > spaceTimeMetric;
@@ -68,7 +67,7 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
 
         std::vector< std::string > bodyList;
         std::vector< std::function< double( ) > > bodyGravitationalParameterFunctions;
-        std::vector< std::function< Eigen::VectorXd( ) > > bodyStateFunctions;
+        std::vector< std::function< Eigen::Vector6d( ) > > bodyStateFunctions;
         std::vector< std::function< Eigen::Vector3d( const double ) > > bodyAccelerationFunctions;
         std::vector< int > secondOrderBodyList;
         std::map< int, std::function< double( ) > > bodyAngularMomentumFunctions;
@@ -110,9 +109,6 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
             }
 
             bodyStateFunctions.push_back( std::bind( &Body::getState, body ) );
-
-            std::function< Eigen::VectorXd( const double ) > bodyStateFunction =
-                std::bind( &Body::getStateInBaseFrameFromEphemeris< StateScalarType, TimeType >, body, std::placeholders::_1 );
 
             // TODO: implement or resolve this method properly
             bodyAccelerationFunctions.push_back(

@@ -52,7 +52,6 @@ void setRelativisticTimeConverter(
         conversionSettings->getNumericalIntegrationSettings( ),
         initialTime,
         terminationSettings );
-    std::cerr<<"Initial combined state:\n"<<multiTypeSettings->getInitialStates()<<std::endl;
 
     propagators::SingleArcDynamicsSimulator< double, double > simulator(
         bodyMap,
@@ -68,9 +67,9 @@ void setRelativisticTimeConverters(
         const SystemOfBodies& bodyMap,
         const std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings< StateScalarType, TimeType > > >& converterSettings )
 {
-    for ( const auto& [name, settings] : converterSettings )
+    for ( const auto& converterEntry : converterSettings )
     {
-        setRelativisticTimeConverter( settings, bodyMap );
+        setRelativisticTimeConverter( converterEntry.second, bodyMap );
     }
 }
 

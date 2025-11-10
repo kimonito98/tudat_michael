@@ -32,8 +32,8 @@ public:
     HarmonicSchwarzschildMetric( const HarmonicSchwarzschildMetric& originalMetric )
         : centralGravitationalParameterFunction_( originalMetric.centralGravitationalParameterFunction_ ),
           ppnParameterSet_( originalMetric.ppnParameterSet_ ),
-          includeSecondPostNewtonianOrder_( originalMetric.includeSecondPostNewtonianOrder_ ),
-          centralBodyName_( originalMetric.centralBodyName_ ) { }
+          centralBodyName_( originalMetric.centralBodyName_ ),
+          includeSecondPostNewtonianOrder_( originalMetric.includeSecondPostNewtonianOrder_ ) { }
 
     std::shared_ptr< Metric > Clone( ) override
     {

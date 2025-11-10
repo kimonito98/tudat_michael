@@ -125,7 +125,6 @@ private:
     std::shared_ptr< relativity::PPNParameterSet > ppnParameterSet_;
 };
 
-// Factory function declaration
 std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
         const std::shared_ptr< SpaceTimeMetricSettings >& spaceTimeMetricSettings,
         const simulation_setup::SystemOfBodies& bodyMap );
