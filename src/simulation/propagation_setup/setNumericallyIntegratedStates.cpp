@@ -219,7 +219,6 @@ void resetIntegratedPostNewtonianTimeEphemeris< double, double >(
         const std::pair< std::string, std::string > referencePointIdentifier,
         const std::pair< int, int >& startIndexAndSize )
 {
-    std::cout<<"resetIntegratedPostNewtonianTimeEphemeris size "<<numericalSolution.size()<<std::endl;
     std::cout<<"resetIntegratedPostNewtonianTimeEphemeris"<< std::endl;
     if( startIndexAndSize.second != 1 )
     {

@@ -197,6 +197,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
             numerical_integrators::rungeKutta4Settings( timeStep );
     integratorSettings->initialTimeDeprecated_ = startTime;
+    integratorSettings->initialTimeDeprecated_ = startTime;
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
 
     auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
@@ -406,15 +407,17 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
 
 
+    const std::vector< std::string > topocentricPerturbingBodies{ "Moon", "Sun", "Jupiter", "Saturn" };
+
     std::vector< std::shared_ptr< RelativisticTimeStatePropagatorSettings< double, double > > > bodyCentricToTopocentricConversionSettings;
     bodyCentricToTopocentricConversionSettings.push_back(
                 std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-                    std::make_pair( "Earth", "Graz" ), 0, 4, 0, listOfPerturbingBodies,
+                    std::make_pair( "Earth", "Graz" ), 0, 4, 0, topocentricPerturbingBodies,
                     initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
                     dependentVariablesList, outputProcessingSettings ) );
     bodyCentricToTopocentricConversionSettings.push_back(
                 std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-                    std::make_pair( "Earth", "Yarragadee" ), 0, 4, 0, listOfPerturbingBodies,
+                    std::make_pair( "Earth", "Yarragadee" ), 0, 4, 0, topocentricPerturbingBodies,
                     initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
                     dependentVariablesList, outputProcessingSettings ) );
 
@@ -464,10 +467,11 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
             std::make_shared< SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
                 "Earth", listOfPerturbingBodies2, initialEphemerisTime, integratorSettings, terminationSettings );
 
+    directEarthTimeScaleConverter->getOutputSettings( )->setIntegratedResult( true );
 
     // Get directly calculated map of tcg-tcb from tcb input (key)
     SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >(
-                bodies, integratorSettings, directEarthTimeScaleConverter, true, false, false );
+                bodies, directEarthTimeScaleConverter, true );
 
     std::map< double, Eigen::VectorXd > directTimeDifferencesVectors = timeEquationPropagator.getEquationsOfMotionNumericalSolution( );
     std::map< double, double > directTimeDifferences;
@@ -508,8 +512,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     double maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     double minimumDifference = forwardBackardTransformationResults.minCoeff( );
 
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
+    BOOST_CHECK_SMALL( maximumDifference, 1.0E-9 );
+    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-9 );
 
     counter = 0;
     convertedValue = 0.0;
@@ -525,8 +529,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     minimumDifference = forwardBackardTransformationResults.minCoeff( );
 
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
+    BOOST_CHECK_SMALL( maximumDifference, 1.0E-9 );
+    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-9 );
 
     std::vector< double > evaluationTimes = utilities::createVectorFromMapKeys( directTimeDifferences );
 

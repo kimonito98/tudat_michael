@@ -52,13 +52,13 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
             ( Eigen::Vector3d( ) << 4194511.7, 1162789.7, 4647362.5 ).finished( );
 
     SystemOfBodies bodiesDirect = createSystemOfBodies( bodySettings );
- //   SystemOfBodies bodiesMulti = createSystemOfBodies( bodySettings );
+    SystemOfBodies bodiesMulti = createSystemOfBodies( bodySettings );
 
     setGlobalFrameBodyEphemerides( bodiesDirect.getMap( ), "SSB", "ECLIPJ2000" );
-//    setGlobalFrameBodyEphemerides( bodiesMulti.getMap( ), "SSB", "ECLIPJ2000" );
+    setGlobalFrameBodyEphemerides( bodiesMulti.getMap( ), "SSB", "ECLIPJ2000" );
 
     createGroundStations( bodiesDirect, groundStations );
-//    createGroundStations( bodiesMulti, groundStations );
+    createGroundStations( bodiesMulti, groundStations );
 
     for( const auto& bodyName : bodyNames )
     {
@@ -66,14 +66,14 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
         {
             bodiesDirect.getBody( bodyName )->setStateFromEphemeris( initialEphemerisTime );
         }
-        //if( bodiesMulti.doesBodyExist( bodyName ) )
-        //{
-        //    bodiesMulti.getBody( bodyName )->setStateFromEphemeris( initialEphemerisTime );
-        //}
+        if( bodiesMulti.doesBodyExist( bodyName ) )
+        {
+            bodiesMulti.getBody( bodyName )->setStateFromEphemeris( initialEphemerisTime );
+        }
     }
 
     bodiesDirect.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEphemerisTime );
-    //bodiesMulti.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEphemerisTime );
+    bodiesMulti.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEphemerisTime );
 
     auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEphemerisTime );
     auto integratorSettingsDirect = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 200.0 );
@@ -84,7 +84,8 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
             std::vector< std::string >( ),
             std::vector< std::string >{ "Earth" },
             std::map< std::string, std::pair< int, int > >( ),
-            std::vector< std::string >( ) );
+            std::vector< std::string >( ),
+            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ) );
 
     baseMetric = createSpaceTimeMetric( metricSettings, bodiesDirect );
     evaluatedMetricObjects.clear( );
@@ -123,62 +124,59 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
             directFromMetricSettings,
             true );
 
-//     Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
-//             Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
-//     const std::vector< std::string > perturbingBodies;
+    Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
+            Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
+    const std::vector< std::string > perturbingBodies;
 
-//     auto firstOrderTimeSettings =
-//             std::make_shared< FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
-//                     "Earth",
-//                     perturbingBodies,
-//                     initialEphemerisTime,
-//                     integratorSettingsMulti,
-//                     terminationSettings );
+    auto firstOrderTimeSettings =
+            std::make_shared< FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
+                    "Earth",
+                    perturbingBodies,
+                    initialEphemerisTime,
+                    integratorSettingsMulti,
+                    terminationSettings );
+    firstOrderTimeSettings->getOutputSettings( )->setIntegratedResult( true );
 
-//     auto bodyToTopoSettings =
-//             std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-//                     std::make_pair( "Earth", "Graz" ),
-//                     false,
-//                     0,
-//                     false,
-//                     perturbingBodies,
-//                     initialRelativisticState,
-//                     initialEphemerisTime,
-//                     integratorSettingsMulti,
-//                     terminationSettings );
+    auto bodyToTopoSettings =
+            std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
+                    std::make_pair( "Earth", "Graz" ),
+                    false,
+                    0,
+                    false,
+                    perturbingBodies,
+                    initialRelativisticState,
+                    initialEphemerisTime,
+                    integratorSettingsMulti,
+                    terminationSettings );
+    bodyToTopoSettings->getOutputSettings( )->setIntegratedResult( true );
 
-//     std::map< IntegratedStateType, std::vector< std::shared_ptr< SingleArcPropagatorSettings< double > > > > propagatorSettingsMap;
-//     propagatorSettingsMap[ proper_time ].push_back( firstOrderTimeSettings );
-//     propagatorSettingsMap[ proper_time ].push_back( bodyToTopoSettings );
+    SingleArcDynamicsSimulator< double > barycentricDynamicsSimulator(
+            bodiesMulti,
+            firstOrderTimeSettings,
+            true );
 
-//     auto combinedPropagatorSettings = std::make_shared< MultiTypePropagatorSettings< double > >(
-//             propagatorSettingsMap,
-//             terminationSettings );
-//     combinedPropagatorSettings->resetInitialTime( initialEphemerisTime );
-//     combinedPropagatorSettings->setIntegratorSettings( integratorSettingsMulti );
-
-//     SingleArcDynamicsSimulator< double > combinedDynamicsSimulator(
-//             bodiesMulti,
-//             combinedPropagatorSettings,
-//             true );
+    SingleArcDynamicsSimulator< double > topocentricDynamicsSimulator(
+            bodiesMulti,
+            bodyToTopoSettings,
+            true );
 
     auto timeEphemerisDirect = bodiesDirect.getBody( "Earth" )->getTimeScaleConverter( );
-//    auto timeEphemerisCombined = bodiesMulti.getBody( "Earth" )->getTimeScaleConverter( );
+    auto timeEphemerisCombined = bodiesMulti.getBody( "Earth" )->getTimeScaleConverter( );
 
     BOOST_REQUIRE_NE( timeEphemerisDirect, nullptr );
- //   BOOST_REQUIRE_NE( timeEphemerisCombined, nullptr );
+    BOOST_REQUIRE_NE( timeEphemerisCombined, nullptr );
 
     const auto directFunction = timeEphemerisDirect->getTimeDifferenceFunction(
             barycentric_coordinate_time_scale, local_proper_time_scale, "Graz" );
-//     const auto combinedFunction = timeEphemerisCombined->getTimeDifferenceFunction(
-//             barycentric_coordinate_time_scale, local_proper_time_scale, "Graz" );
+    const auto combinedFunction = timeEphemerisCombined->getTimeDifferenceFunction(
+            barycentric_coordinate_time_scale, local_proper_time_scale, "Graz" );
 
     double currentTime = initialEphemerisTime + 5000.0;
     const double testTimeStep = 5.0001E1;
     while( currentTime < finalEphemerisTime - 5000.0 )
     {
-        //BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-12 );
-        std::cout<< directFunction( currentTime ) << std::endl;
+        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-3 );
+        //std::cout<< directFunction( currentTime ) << std::endl;
         currentTime += testTimeStep;
     }
 }

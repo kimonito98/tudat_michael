@@ -17,6 +17,7 @@
 #include <functional>
 
 #include <string>
+#include <stdexcept>
 
 #include "tudat/math/basic/linearAlgebra.h"
 
@@ -166,8 +167,18 @@ public:
 
     void updateStateDerivativeModel( const TimeType currentTime )
     {
-        spaceTimeMetric_->update( referencePointStateFunction_( ), currentTime, 1, 0  );
-        currentProperTimeDerivative_ = evaluateProperTimeEquation( spaceTimeMetric_, referencePointStateFunction_( ), 2 );
+        if( spaceTimeMetric_ == nullptr )
+        {
+            throw std::runtime_error( "DirectProperTimeRateStateDerivative: spaceTimeMetric_ is nullptr" );
+        }
+        if( !referencePointStateFunction_ )
+        {
+            throw std::runtime_error( "DirectProperTimeRateStateDerivative: referencePointStateFunction_ is empty" );
+        }
+
+        const Eigen::Vector6d referenceState = referencePointStateFunction_( );
+        spaceTimeMetric_->update( referenceState, currentTime, 1, 0  );
+        currentProperTimeDerivative_ = evaluateProperTimeEquation( spaceTimeMetric_, referenceState, 2 );
     }
 
     std::shared_ptr< relativity::Metric > getSpaceTimeMetric( )
@@ -829,4 +840,3 @@ private:
 
 }
 #endif // TUDAT_RELATIVISTICTIMESTATEDERIVATIVE_H
-
