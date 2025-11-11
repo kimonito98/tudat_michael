@@ -16,50 +16,57 @@ void setRelativisticTimeConverter(
         const std::shared_ptr< DirectRelativisticTimeConverterSettings< StateScalarType, TimeType > >& conversionSettings,
         const SystemOfBodies& bodyMap )
 {
-    std::vector< std::shared_ptr< propagators::SingleArcPropagatorSettings< double, double > > > propagatorSettingsList;
+    const auto barycentricSettings = conversionSettings->getBaryCentricToBodyCentricConversionSettings( );
+    const auto topocentricConversions = conversionSettings->getBodyCentricToTopocentricConversionSettings( );
 
-    const auto topocentricConversions =
-        conversionSettings->getBodyCentricToTopocentricConversionSettings( );
-
-    for ( const auto& settings : topocentricConversions )
-    {
-        if ( settings->getRelativisticStateDerivativeType( ) != propagators::first_order_bodycentric_to_topocentric )
-        {
-            throw std::runtime_error(
-                "Error in setRelativisticTimeConverter: inconsistent derivative type for topocentric conversion." );
-        }
-
-        propagatorSettingsList.push_back( settings );
-    }
-
-    propagatorSettingsList.push_back( conversionSettings->getBaryCentricToBodyCentricConversionSettings( ) );
-
-    auto terminationSettings =
-        conversionSettings->getBaryCentricToBodyCentricConversionSettings( )->getTerminationSettings( );
-
-    const double initialTime =
-        conversionSettings->getBaryCentricToBodyCentricConversionSettings( )->getInitialTime( );
-
+    const double initialTime = barycentricSettings->getInitialTime( );
     if( !std::isfinite( initialTime ) )
     {
         throw std::runtime_error( "Error in setRelativisticTimeConverter: initial propagation time is not finite." );
     }
 
-    conversionSettings->getNumericalIntegrationSettings( )->initialTimeDeprecated_ = initialTime;
+    const auto baseIntegratorSettings = conversionSettings->getNumericalIntegrationSettings( );
+    if( baseIntegratorSettings == nullptr )
+    {
+        throw std::runtime_error( "Error in setRelativisticTimeConverter: no integrator settings provided." );
+    }
 
-    auto multiTypeSettings = std::make_shared< propagators::MultiTypePropagatorSettings< double > >(
-        propagatorSettingsList,
-        conversionSettings->getNumericalIntegrationSettings( ),
-        initialTime,
-        terminationSettings );
+    barycentricSettings->getOutputSettings( )->setIntegratedResult( true );
 
-    propagators::SingleArcDynamicsSimulator< double, double > simulator(
+    auto barycentricIntegratorSettings = baseIntegratorSettings->clone( );
+    barycentricIntegratorSettings->initialTimeDeprecated_ = initialTime;
+    barycentricSettings->setIntegratorSettings( barycentricIntegratorSettings );
+
+    propagators::SingleArcDynamicsSimulator< double, double > barycentricSimulator(
         bodyMap,
-        conversionSettings->getNumericalIntegrationSettings( ),
-        multiTypeSettings,
-        true,
-        false,
+        barycentricSettings,
         true );
+
+    for( const auto& topocentricSettings : topocentricConversions )
+    {
+        if ( topocentricSettings->getRelativisticStateDerivativeType( ) != propagators::first_order_bodycentric_to_topocentric )
+        {
+            throw std::runtime_error(
+                "Error in setRelativisticTimeConverter: inconsistent derivative type for topocentric conversion." );
+        }
+
+        const double topocentricInitialTime = topocentricSettings->getInitialTime( );
+        if( !std::isfinite( topocentricInitialTime ) )
+        {
+            throw std::runtime_error( "Error in setRelativisticTimeConverter: topocentric propagation time is not finite." );
+        }
+
+        topocentricSettings->getOutputSettings( )->setIntegratedResult( true );
+
+        auto topocentricIntegratorSettings = baseIntegratorSettings->clone( );
+        topocentricIntegratorSettings->initialTimeDeprecated_ = topocentricInitialTime;
+        topocentricSettings->setIntegratorSettings( topocentricIntegratorSettings );
+
+        propagators::SingleArcDynamicsSimulator< double, double > topocentricSimulator(
+            bodyMap,
+            topocentricSettings,
+            true );
+    }
 }
 
 template< typename StateScalarType, typename TimeType >

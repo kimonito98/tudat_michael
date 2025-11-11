@@ -39,8 +39,14 @@ public:
      * \param parameterGamma Value of PPN parameter gamma.
      * \param parameterBeta Value of PPN parameter beta.
      */
-    PPNParameterSet( const double parameterGamma, const double parameterBeta ):
-        parameterGamma_( parameterGamma ), parameterBeta_( parameterBeta )
+    PPNParameterSet( const double parameterGamma,
+                     const double parameterBeta,
+                     const double parameterDelta = 0.0,
+                     const double parameterEpsilon = 0.0 ):
+        parameterGamma_( parameterGamma ),
+        parameterBeta_( parameterBeta ),
+        parameterDelta_( parameterDelta ),
+        parameterEpsilon_( parameterEpsilon )
     { }
 
     //! Destructor

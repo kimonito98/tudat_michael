@@ -1,6 +1,7 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <stdexcept>
 #include <Eigen/Core>
 
 #include "tudat/astro/ephemerides/timeEphemeris.h"
@@ -40,6 +41,17 @@ std::function< double( const double ) > TimeEphemerisFromPostNewtonianExpansion:
     }
     else
     {
+        const bool requiresBarycentricInterpolators =
+                ( inputScale == barycentric_coordinate_time_scale || outputScale == barycentric_coordinate_time_scale );
+        if( requiresBarycentricInterpolators &&
+            ( barycenterToPlanetCenterCoordinateTimeInterpolator_ == nullptr ||
+              planetCenterToBarycenterCoordinateTimeInterpolator_ == nullptr ) )
+        {
+            throw std::runtime_error(
+                        "Error in TimeEphemerisFromPostNewtonianExpansion: barycentric/bodycentric interpolators not initialized for " +
+                        centralBodyName_ );
+        }
+
         switch( inputScale )
         {
         case barycentric_coordinate_time_scale:

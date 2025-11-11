@@ -79,9 +79,10 @@ void HarmonicSchwarzschildMetric::updateChristoffelSymbols( )
 
     // ^0_{0i} and ^0_{i0}
     currentChristoffelSymbols_[ 0 ]( 0, 0 ) = -scalarPotentialTimeDerivative;
-    currentChristoffelSymbols_[ 0 ].block( 1, 0, 3, 1 ) = position * ( 1.0 + 2.0 * ( 1.0 - beta ) * scaledPotential );
-    currentChristoffelSymbols_[ 0 ].block( 0, 1, 1, 3 ) =
-        currentChristoffelSymbols_[ 0 ].block( 1, 0, 3, 1 ).transpose( );
+    const Eigen::Vector3d spaceTimeCoupling =
+            position * ( 1.0 + 2.0 * ( 1.0 - beta ) * scaledPotential );
+    currentChristoffelSymbols_[ 0 ].block( 1, 0, 3, 1 ) = spaceTimeCoupling;
+    currentChristoffelSymbols_[ 0 ].block( 0, 1, 1, 3 ) = spaceTimeCoupling.transpose( );
     currentChristoffelSymbols_[ 0 ].block( 1, 1, 3, 3 ) =
         scalarPotentialTimeDerivative * gamma * Eigen::Matrix3d::Identity( );
 
@@ -103,14 +104,16 @@ void HarmonicSchwarzschildMetric::updateChristoffelSymbols( )
         }
 
         Eigen::Matrix3d offDiagTerm = Eigen::Matrix3d::Zero( );
-        offDiagTerm.block( i, 0, 1, 3 ) = position.transpose( ) * -gamma;
-        offDiagTerm += offDiagTerm.transpose( );
+        Eigen::RowVector3d offDiagRow = position.transpose( ) * -gamma;
+        offDiagTerm.block( i, 0, 1, 3 ) = offDiagRow;
+        offDiagTerm.block( 0, i, 3, 1 ) = offDiagRow.transpose( );
 
         if ( includeSecondPostNewtonianOrder_ )
         {
-            offDiagTerm.block( i, 0, 1, 3 ) += position.transpose( ) *
+            offDiagRow += position.transpose( ) *
                 ( -scaledPotential * ( epsilon - 2.0 * gamma * gamma ) );
-            offDiagTerm += offDiagTerm.transpose( );
+            offDiagTerm.block( i, 0, 1, 3 ) = offDiagRow;
+            offDiagTerm.block( 0, i, 3, 1 ) = offDiagRow.transpose( );
         }
 
         currentChristoffelSymbols_[ i + 1 ].block( 1, 1, 3, 3 ) += diagTerm + offDiagTerm;

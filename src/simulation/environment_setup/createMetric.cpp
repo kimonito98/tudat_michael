@@ -31,7 +31,7 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
         }
 
         const std::string& bodyName = schwarzschildSettings->getBodyName( );
-        if (!bodies.doesBodyExist( bodyName ) == 0 )
+        if( !bodies.doesBodyExist( bodyName ) )
         {
             std::cerr << "Error: Body " << bodyName << " not found in body map.\n";
             break;

@@ -647,6 +647,11 @@ public:
         return rotationWrapper_;
     }
 
+    void setRotationWrapper( const std::shared_ptr< reference_frames::RotationWrapper >& rotationWrapper )
+    {
+        rotationWrapper_ = rotationWrapper;
+    }
+
     double getGravitationalPotentialFromInertialPosition(
         const Eigen::Vector3d& inertialPosition,
         const double maximumDegree,

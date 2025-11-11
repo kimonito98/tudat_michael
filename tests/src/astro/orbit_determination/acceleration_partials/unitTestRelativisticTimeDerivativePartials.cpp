@@ -127,14 +127,14 @@ BOOST_AUTO_TEST_CASE( testFirstOrderBarycentricToBodycentricPartials )
     Eigen::MatrixXd partialWrtSunGravitationalParameter = timeDerivativePartial->wrtParameter( sunGravitationalParameter );
     Eigen::MatrixXd partialWrtMoonGravitationalParameter = timeDerivativePartial->wrtParameter( moonGravitationalParameter );
 
-    Eigen::Matrix< double, 6, 1 > statePerturbation;
-    statePerturbation << 100000.0, 100000.0, 100000.0, 1.0, 1.0, 1.0;
+    const Eigen::Vector6d statePerturbation = ( Eigen::Vector6d( ) << 100000.0, 100000.0, 100000.0, 1.0, 1.0, 1.0 ).finished( );
 
-    std::function< void( const Eigen::Vector6d& ) > earthStateSetFunction =
-            std::bind( &Body::setState, earth, std::placeholders::_1 );
-    std::function< void( const Eigen::Vector6d& ) > sunStateSetFunction = std::bind( &Body::setState, sun, std::placeholders::_1 );
-    std::function< void( const Eigen::Vector6d& ) > moonStateSetFunction =
-            std::bind( &Body::setState, moon, std::placeholders::_1 );
+    const std::function< void( const Eigen::Vector6d& ) > earthStateSetFunction =
+            [earth]( const Eigen::Vector6d& state ){ earth->setState( state ); };
+    const std::function< void( const Eigen::Vector6d& ) > sunStateSetFunction =
+            [sun]( const Eigen::Vector6d& state ){ sun->setState( state ); };
+    const std::function< void( const Eigen::Vector6d& ) > moonStateSetFunction =
+            [moon]( const Eigen::Vector6d& state ){ moon->setState( state ); };
 
     Eigen::Matrix< double, 1, 6 > testPartialWrtEarthState = calculateRelativisticTimeDerivativeWrtStatePartials(
             earthStateSetFunction, timeDerivativeModel, earth->getState( ), statePerturbation );
@@ -215,11 +215,10 @@ BOOST_AUTO_TEST_CASE( testDirectProperTimeDerivativePartials )
     Eigen::MatrixXd partialWrtPpnGamma = timeDerivativePartial->wrtParameter( ppnParameterGamma );
     Eigen::MatrixXd partialWrtPpnBeta = timeDerivativePartial->wrtParameter( ppnParameterBeta );
 
-    Eigen::Matrix< double, 6, 1 > statePerturbation;
-    statePerturbation << 100000.0, 100000.0, 100000.0, 1.0, 1.0, 1.0;
+    const Eigen::Vector6d statePerturbation = ( Eigen::Vector6d( ) << 100000.0, 100000.0, 100000.0, 1.0, 1.0, 1.0 ).finished( );
 
-    std::function< void( const Eigen::Vector6d& ) > testParticleStateSetFunction =
-            std::bind( &Body::setState, testParticle, std::placeholders::_1 );
+    const std::function< void( const Eigen::Vector6d& ) > testParticleStateSetFunction =
+            [testParticle]( const Eigen::Vector6d& state ){ testParticle->setState( state ); };
 
     Eigen::Matrix< double, 1, 6 > testPartialWrtTestParticleState = calculateRelativisticTimeDerivativeWrtStatePartials(
             testParticleStateSetFunction, timeDerivativeModel, testParticle->getState( ), statePerturbation );

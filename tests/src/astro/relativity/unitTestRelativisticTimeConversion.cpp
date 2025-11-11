@@ -194,7 +194,9 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     double endTime = finalEphemerisTime;
     double timeStep = 6000.0;
 
-    std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings = numerical_integrators::rungeKutta4Settings( timeStep );
+    std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
+            numerical_integrators::rungeKutta4Settings( timeStep );
+    integratorSettings->initialTimeDeprecated_ = startTime;
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
 
     auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
@@ -388,7 +390,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     double endTime = finalEphemerisTime;
     double timeStep = 6000.0;
 
-    std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings = numerical_integrators::rungeKutta4Settings( timeStep );
+    std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
+            numerical_integrators::rungeKutta4Settings( timeStep );
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
 
     std::vector< std::string > listOfPerturbingBodies{ "Earth",  "Moon",  "Sun", "Jupiter", "Saturn" };
