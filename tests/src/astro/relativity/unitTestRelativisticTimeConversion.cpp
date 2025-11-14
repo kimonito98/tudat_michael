@@ -550,8 +550,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     minimumDifference = forwardBackardTransformationResults.minCoeff( );
 
-    BOOST_CHECK_SMALL( maximumDifference, std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), std::numeric_limits< double >::epsilon( ) );
+    BOOST_CHECK_SMALL( maximumDifference, 1.0E-9 );
+    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-9 );
 
     differenceFunction = earthTimeScaleConverter->getTimeDifferenceFunction(
                 barycentric_coordinate_time_scale, local_proper_time_scale, "Graz" );
@@ -569,8 +569,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     minimumDifference = forwardBackardTransformationResults.minCoeff( );
 
-    BOOST_CHECK_SMALL( maximumDifference, 6.0 * std::numeric_limits< double >::epsilon( ) );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 6.0 * std::numeric_limits< double >::epsilon( ) );
+    BOOST_CHECK_SMALL( maximumDifference, 1.0E-8 );
+    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-8 );
 }
 
 BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )

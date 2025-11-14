@@ -78,3 +78,5 @@ Tudat/interface/spice/Kernels/
 rever/
 tests/data.zip
 tests/data.zip
+coupled_spacetime_vs_develop_summary.txt
+coupled_spacetime_vs_develop.diff

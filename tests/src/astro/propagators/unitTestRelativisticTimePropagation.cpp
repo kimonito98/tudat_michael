@@ -106,8 +106,9 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
             true,
             true,
             1,
-            TUDAT_NAN,
-            propagationPrintSettings );
+            TUDAT_NAN
+            //propagationPrintSettings 
+            );
 
     auto directFromMetricSettings = std::make_shared< DirectRelativisticTimePropagatorSettings< double, double > >(
             std::make_pair( "Earth", "Graz" ),
@@ -117,7 +118,8 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
             &basic_astrodynamics::doDummyTimeConversion< double >,
             1.0,
             std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >( ),
-            directOutputSettings );
+            directOutputSettings 
+        );
 
     SingleArcDynamicsSimulator< double > directDynamicsSimulator(
             bodiesDirect,
@@ -175,8 +177,8 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     const double testTimeStep = 5.0001E1;
     while( currentTime < finalEphemerisTime - 5000.0 )
     {
-        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-3 );
-        //std::cout<< directFunction( currentTime ) << std::endl;
+        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-5 );
+        std::cout<< directFunction( currentTime ) << std::endl;
         currentTime += testTimeStep;
     }
 }
