@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
          const std::string& id = idToNamePair.first;
          const std::string& name = idToNamePair.second;
          std::shared_ptr< Body > body = std::make_shared< Body >();
-         double gm = spice_interface::getBodyGravitationalParameter( id ) / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
+         double gm = spice_interface::getBodyGravitationalParameter( id ); // / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
          body->setGravityFieldModel( std::make_shared< gravitation::GravityFieldModel >( gm ) );
          bodies.addBody( body, name );
      }
@@ -192,11 +192,10 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
 
     double startTime = initialEphemerisTime;
     double endTime = finalEphemerisTime;
-    double timeStep = 6000.0;
+    double timeStep = 7200; //6000.0;
 
     std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
             numerical_integrators::rungeKutta4Settings( timeStep );
-    integratorSettings->initialTimeDeprecated_ = startTime;
     integratorSettings->initialTimeDeprecated_ = startTime;
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
 
@@ -215,12 +214,13 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
                 std::vector< std::string  >( ),
                 &basic_astrodynamics::doDummyTimeConversion< double >,
                 1.0,
-                dependentVariablesList, 
-                outputProcessingSettings );
+                dependentVariablesList,
+                outputProcessingSettings 
+            );
 
     SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >( bodies, properTimeEquationSettings );
 
-    std::string timeDifferenceFileName = spiceKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_TCG.asc";
+    std::string timeDifferenceFileName = textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_TT.asc";
 
     std::shared_ptr< interpolators::OneDimensionalInterpolator< double, long double > > timeEphemerisInterpolator =
             input_output::createLongInpopTimeEphemerisInterpolator( timeDifferenceFileName );
@@ -569,8 +569,8 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     minimumDifference = forwardBackardTransformationResults.minCoeff( );
 
-    BOOST_CHECK_SMALL( maximumDifference, 1.0E-8 );
-    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-8 );
+    BOOST_CHECK_SMALL( maximumDifference, 1.0E-12 );
+    BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-12 );
 }
 
 BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )
@@ -615,7 +615,7 @@ BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )
                     initialEpoch,
                     integratorSettings,
                     terminationSettings ) );
-    const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun" };
+    const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun", "Moon" };
     const std::vector< std::string > issPerturbingBodies{ "Earth", "Sun", "Moon" };
     std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > converterSettings;
     converterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(

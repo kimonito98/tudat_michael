@@ -545,8 +545,10 @@ public:
         Eigen::Block< Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic > > stateDerivative )
     {
         stateDerivative = ( Eigen::Matrix< StateScalarType, 1, 1 >( ) 
-            << relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_, this->currentExternalPotential_ )
-            + relativity::calculateSecondOrderTcbToTcgIntegrand(
+            << ( physical_constants::LB_TIME_RATE_TERM + relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,
+                 this->currentExternalPotential_) ) * ( 1 + physical_constants::LB_TIME_RATE_TERM - physical_constants::LG_TIME_RATE_TERM) - physical_constants::LG_TIME_RATE_TERM
+            //<< relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,   this->currentExternalPotential_)         
+                 + relativity::calculateSecondOrderTcbToTcgIntegrand(
                 this->currentVelocity_, this->currentExternalPotential_, this->currentCentralBodyState_.segment( 3, 3 ), 
                 currentExternalVectorPotential_, currentSecondOrderExternalPotentialCorrection_ ) ).finished( );
     }
