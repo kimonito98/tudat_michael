@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     const double testTimeStep = 1.0E5;
     while( currentTime < finalEphemerisTime - 5000.0 )
     {
-        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-3 );
+        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-4 );
         std::cout<< directFunction( currentTime ) <<" "<<combinedFunction( currentTime )<<" "<<directFunction( currentTime ) - combinedFunction( currentTime )<< std::endl;
         currentTime += testTimeStep;
     }

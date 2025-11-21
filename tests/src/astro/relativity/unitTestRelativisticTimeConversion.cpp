@@ -30,6 +30,7 @@
 #include "tudat/astro/ephemerides/tleEphemeris.h"
 
 #include "tudat/astro/relativity/relativisticTimeConversion.h"
+#include "tudat/astro/relativity/metric.h"
 #include "tudat/interface/sofa/sofaTimeConversions.h"
 #include "tudat/io/readInpopEphemerisFile.h"
 #include "tudat/math/integrators/createNumericalIntegrator.h"
@@ -39,6 +40,7 @@
 #include "tudat/interface/spice/spiceEphemeris.h"
 
 #include "tudat/simulation/environment_setup/createRelativisticTimeConverter.h"
+#include "tudat/simulation/environment_setup/createMetric.h"
 
 #include "tudat/simulation/simulation.h"
 #include "tudat/basics/timeType.h"
@@ -192,7 +194,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
 
     double startTime = initialEphemerisTime;
     double endTime = finalEphemerisTime;
-    double timeStep = 7200; //6000.0;
+    double timeStep = 500; //6000.0;
 
     std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
             numerical_integrators::rungeKutta4Settings( timeStep );
@@ -591,43 +593,88 @@ BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )
     bodies.createEmptyBody( "ISS" );
     bodies.getBody( "ISS" )->setEphemeris( issEphemeris );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
+
+    // Initialize translational and rotational states at initial epoch
+    for( const auto& bodyName : bodiesToCreate )
+    {
+        if( bodies.doesBodyExist( bodyName ) )
+        {
+            bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
+        }
+    }
+    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
+
     const Eigen::Vector3d parisGeodetic =
             ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.8 ),
               unit_conversions::convertDegreesToRadians( 2.3 ), 0.0 ).finished( );
     createGroundStation(
             bodies.getBody( "Earth" ), "Paris", parisGeodetic, coordinate_conversions::geodetic_position );
+
+    // Set up space-time metric for direct-from-metric proper time propagation
+    std::vector< std::string > firstOrderMetricBodies{ "Sun", "Earth", "Moon" };
+    auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
+            firstOrderMetricBodies,
+            std::vector< std::string >( ),
+            std::map< std::string, std::pair< int, int > >( ),
+            std::vector< std::string >( ),
+            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ) );
+    baseMetric = createSpaceTimeMetric( metricSettings, bodies );
+    evaluatedMetricObjects.clear( );
+
     const double integratorStep = 60.0;
     auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
     auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEpoch );
-    const Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
-            Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
-    const std::vector< std::string > topocentricPerturbingBodies{ "Sun", "Moon" };
-    std::vector< std::shared_ptr< RelativisticTimeStatePropagatorSettings< double, double > > >
-            bodyCentricToTopocentricConversionSettings;
-    bodyCentricToTopocentricConversionSettings.push_back(
-            std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
+
+    auto propagationPrintSettings = std::make_shared< PropagationPrintSettings >(
+            true,
+            false,
+            10 * integratorStep,
+            0.0,
+            true,
+            true,
+            true,
+            true,
+            false,
+            false );
+    auto directOutputSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
+            true,
+            true,
+            1,
+            TUDAT_NAN,
+            propagationPrintSettings );
+
+    // Direct-from-metric propagation for Paris ground station
+    auto parisDirectSettings =
+            std::make_shared< DirectRelativisticTimePropagatorSettings< double, double > >(
                     std::make_pair( "Earth", "Paris" ),
-                    false,
-                    4,
-                    true,
-                    topocentricPerturbingBodies,
-                    initialRelativisticState,
                     initialEpoch,
                     integratorSettings,
-                    terminationSettings ) );
-    const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun", "Moon" };
-    const std::vector< std::string > issPerturbingBodies{ "Earth", "Sun", "Moon" };
-    std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > converterSettings;
-    converterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-            std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
-                    "Earth", earthPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
-            integratorSettings,
-            bodyCentricToTopocentricConversionSettings );
-    converterSettings[ "ISS" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-            std::make_shared< propagators::FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
-                    "ISS", issPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
-            integratorSettings );
-    setRelativisticTimeConverters( bodies, converterSettings );
+                    terminationSettings,
+                    &basic_astrodynamics::doDummyTimeConversion< double >,
+                    1.0,
+                    std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >( ),
+                    directOutputSettings );
+    SingleArcDynamicsSimulator< double > parisDirectDynamics(
+            bodies,
+            parisDirectSettings,
+            true );
+
+    // Direct-from-metric propagation for ISS proper time
+    auto issDirectSettings =
+            std::make_shared< DirectRelativisticTimePropagatorSettings< double, double > >(
+                    std::make_pair( "ISS", "" ),
+                    initialEpoch,
+                    integratorSettings,
+                    terminationSettings,
+                    &basic_astrodynamics::doDummyTimeConversion< double >,
+                    1.0,
+                    std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >( ),
+                    directOutputSettings );
+    SingleArcDynamicsSimulator< double > issDirectDynamics(
+            bodies,
+            issDirectSettings,
+            true );
+
     auto earthTimeScaleConverter = bodies.getBody( "Earth" )->getTimeScaleConverter( );
     auto issTimeScaleConverter = bodies.getBody( "ISS" )->getTimeScaleConverter( );
     BOOST_REQUIRE( earthTimeScaleConverter != nullptr );
@@ -635,13 +682,11 @@ BOOST_AUTO_TEST_CASE( test_ISS_proper_time_rate )
     std::map< double, Eigen::VectorXd > conversionResults;
     for( double epoch = initialEpoch; epoch <= finalEpoch + std::numeric_limits< double >::epsilon( ); epoch += outputTimeStep )
     {
-        Eigen::VectorXd currentDifferences( 3 );
+        Eigen::VectorXd currentDifferences( 2 );
         currentDifferences( 0 ) = earthTimeScaleConverter->getTimeDifference(
-                barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch );
-        currentDifferences( 1 ) = earthTimeScaleConverter->getTimeDifference(
-                body_centered_coordinate_time_scale, local_proper_time_scale, epoch, "Paris" );
-        currentDifferences( 2 ) = issTimeScaleConverter->getTimeDifference(
-                barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch );
+                barycentric_coordinate_time_scale, local_proper_time_scale, epoch, "Paris" );
+        currentDifferences( 1 ) = issTimeScaleConverter->getTimeDifference(
+                barycentric_coordinate_time_scale, local_proper_time_scale, epoch );
         conversionResults[ epoch ] = currentDifferences;
     }
     input_output::writeDataMapToTextFile(
