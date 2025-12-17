@@ -355,9 +355,10 @@ public:
                         std::shared_ptr< gravitation::SphericalHarmonicsGravityField > shGravityField =
                                 std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >( currentCelestialBody->getGravityFieldModel( ) );
                         higherOrderGravityFieldPotentialFunctions_[ i ] = [=]( const Eigen::Vector3d& position ) {
-                            return shGravityField->getGravitationalPotential( position,
-                                sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).first,
-                                sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).second );
+                            return shGravityField->getGravitationalPotentialFromInertialPosition(
+                                        position,
+                                        static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).first ),
+                                        static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).second ) );
                             };
                     }
                 }
@@ -402,17 +403,19 @@ public:
             this->currentExternalBodyDistances_[ i ] = ( this->currentCentralBodyState_.segment( 0, 3 ) - this->currentExternalBodyStates_[ i ].segment( 0, 3 ) ).norm( );
         }
         // Calculate 1st order external potential.
-        if( higherOrderGravityFieldPotentialFunctions_.size( ) == 0 )
+        this->currentExternalPotential_ = 0.0;
+        for( unsigned int i = 0; i < this->externalBodyStateFunctions_.size( ); i++ )
         {
-            this->currentExternalPotential_ = relativity::calculateFirstOrderExternalScalarPotential(
-                        this->currentExternalBodyGravitationalParameters_, this->currentExternalBodyDistances_ );
-        }
-        else
-        {
-            for( shPotentialIterator_ = higherOrderGravityFieldPotentialFunctions_.begin( ); shPotentialIterator_ !=
-                higherOrderGravityFieldPotentialFunctions_.end( ); shPotentialIterator_++ )
+            const Eigen::Vector3d relativePosition =
+                    this->currentCentralBodyState_.segment( 0, 3 ) - this->currentExternalBodyStates_[ i ].segment( 0, 3 );
+
+            if( higherOrderGravityFieldPotentialFunctions_.count( i ) > 0 )
             {
-                std::cerr<<"Implement this potential stuff"<<std::endl;
+                this->currentExternalPotential_ += higherOrderGravityFieldPotentialFunctions_.at( i )( relativePosition );
+            }
+            else
+            {
+                this->currentExternalPotential_ += this->currentExternalBodyGravitationalParameters_[ i ] / relativePosition.norm( );
             }
         }
     }
@@ -545,9 +548,9 @@ public:
         Eigen::Block< Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic > > stateDerivative )
     {
         stateDerivative = ( Eigen::Matrix< StateScalarType, 1, 1 >( ) 
-            << ( physical_constants::LB_TIME_RATE_TERM + relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,
-                 this->currentExternalPotential_) ) * ( 1 + physical_constants::LB_TIME_RATE_TERM - physical_constants::LG_TIME_RATE_TERM) - physical_constants::LG_TIME_RATE_TERM
-            //<< relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,   this->currentExternalPotential_)         
+            //<< ( physical_constants::LB_TIME_RATE_TERM + relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,
+            //     this->currentExternalPotential_) ) * ( 1 + physical_constants::LB_TIME_RATE_TERM - physical_constants::LG_TIME_RATE_TERM) - physical_constants::LG_TIME_RATE_TERM
+            << relativity::calculateFirstOrderTcbToTcgIntegrand( this->currentVelocity_,   this->currentExternalPotential_)         
                  + relativity::calculateSecondOrderTcbToTcgIntegrand(
                 this->currentVelocity_, this->currentExternalPotential_, this->currentCentralBodyState_.segment( 3, 3 ), 
                 currentExternalVectorPotential_, currentSecondOrderExternalPotentialCorrection_ ) ).finished( );
@@ -574,8 +577,21 @@ public:
             currentBodySpeeds_[ i ] = this->currentExternalBodyStates_[ i ].segment( 3, 3 ).norm( );
         }
 
-        this->currentExternalPotential_= relativity::calculateFirstOrderExternalScalarPotential(
-                    this->currentExternalBodyGravitationalParameters_, this->currentExternalBodyDistances_);//, currentBodySpeeds_, this->currentExternalBodyStates_ );
+        this->currentExternalPotential_ = 0.0;
+        for( unsigned int i = 0; i < this->externalBodyStateFunctions_.size( ); i++ )
+        {
+            const Eigen::Vector3d relativePosition =
+                    this->currentCentralBodyState_.segment( 0, 3 ) - this->currentExternalBodyStates_[ i ].segment( 0, 3 );
+
+            if( this->higherOrderGravityFieldPotentialFunctions_.count( i ) > 0 )
+            {
+                this->currentExternalPotential_ += this->higherOrderGravityFieldPotentialFunctions_.at( i )( relativePosition );
+            }
+            else
+            {
+                this->currentExternalPotential_ += this->currentExternalBodyGravitationalParameters_[ i ] / relativePosition.norm( );
+            }
+        }
 
         currentSecondOrderExternalPotentialCorrection_ = relativity::calculateSecondOrderExternalScalarPotentialCorrection(
                     this->currentExternalBodyGravitationalParameters_, this->currentExternalBodyDistances_, currentBodySpeeds_, this->currentExternalBodyStates_,

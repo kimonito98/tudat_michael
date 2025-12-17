@@ -180,6 +180,22 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
     SystemOfBodies bodies = createSystemOfBodies( bodySettings );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
 
+    // Ensure harmonic gravity has a rotation wrapper before creating metrics
+    {
+        auto earthGravityField =
+                std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
+                        bodies.getBody( "Earth" )->getGravityFieldModel( ) );
+        if( earthGravityField != nullptr )
+        {
+            earthGravityField->setRotationWrapper(
+                std::make_shared< reference_frames::QuaternionRotationWrapper >(
+                    [earth = bodies.getBody( "Earth" )]( )
+                    {
+                        return Eigen::Quaterniond( earth->getCurrentRotationToLocalFrame( ) );
+                    } ) );
+        }
+    }
+
     std::vector< std::string > firstOrderPerturbingBodies{ "Earth" };
     std::map< std::string, std::pair< int, int > > bodySphericalHarmonicExpansions;
     bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 12, 12 );
@@ -205,6 +221,7 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
     auto earthGravityField =
             std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
                     bodies.getBody( "Earth" )->getGravityFieldModel( ) );
+    BOOST_REQUIRE_MESSAGE( earthGravityField != nullptr, "Earth gravity field is not spherical harmonics." );
     earthGravityField->setRotationWrapper(
             std::make_shared< reference_frames::QuaternionRotationWrapper >(
                     [earth = bodies.getBody( "Earth" )]( )
@@ -215,8 +232,9 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
     Eigen::Vector6d earthCenteredKeplerElements;
     earthCenteredKeplerElements << 6378.0E3 + 300E3, 0.013, 1.0238269559089248,
             3.1526292818328812, 1.5807574453453865, 3.1478950321924795;
+    const double earthGravitationalParameter = earthGravityField->getGravitationalParameter( );
     const Eigen::Vector6d testCartesianElements = convertKeplerianToCartesianElements(
-            earthCenteredKeplerElements, spice_interface::getBodyGravitationalParameter( "Earth" ) );
+            earthCenteredKeplerElements, earthGravitationalParameter );
 
     fullMetric->update( testCartesianElements + bodies.getBody( "Earth" )->getState( ), 0.0, true, false );
     truncatedMetric->update( testCartesianElements + bodies.getBody( "Earth" )->getState( ), 0.0, true, false );

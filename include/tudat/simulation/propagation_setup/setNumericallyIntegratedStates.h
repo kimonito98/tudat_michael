@@ -1150,9 +1150,7 @@ public:
         referencePointIdentifier_( referencePointIdentifier ),
         stateDerivativeType_( stateDerivativeType ),
         bodies_(bodies)
-    { 
-        std::cout<<"RelativisticStateIntegratedStateProcessor"<<std::endl;
-    }
+    { }
 
     virtual ~RelativisticStateIntegratedStateProcessor( ){ }
 
@@ -1684,7 +1682,6 @@ void resetIntegratedStates(
         const std::map< IntegratedStateType, std::shared_ptr< SingleArcIntegratedStateProcessor< TimeType, StateScalarType > > >
                 integratedStateProcessors )
 {
-    std::cout<<"resetIntegratedStates"<<std::endl;
     for( typename std::map< IntegratedStateType,
                             std::shared_ptr< SingleArcIntegratedStateProcessor< TimeType, StateScalarType > > >::const_iterator
                  updateIterator = integratedStateProcessors.begin( );

@@ -789,11 +789,9 @@ public:
                            std::placeholders::_2 ),
                 dependentVariableInterface,
                 sequentialPropagation_ );
-        std::cout<<"propagationResults_"<<std::endl;
         // Integrate equations of motion if required.
         if( areEquationsOfMotionToBeIntegrated )
         {
-            std::cout<<"areEquationsOfMotionToBeIntegrated"<<std::endl;
             integrateEquationsOfMotion( propagatorSettings_->getInitialStates( ) );
         }
     }
@@ -896,7 +894,6 @@ public:
     void integrateEquationsOfMotion( const Eigen::Matrix< StateScalarType, Eigen::Dynamic, Eigen::Dynamic >& processedInitialState,
                                      const std::shared_ptr< SimulationResults > propagationResults )
     {
-        std::cout<<"integrateEquationsOfMotion"<<std::endl;
         performPropagationPreProcessingSteps( propagationResults );
         propagateDynamics< SimulationResults >(
                 processedInitialState,
@@ -1064,7 +1061,6 @@ public:
      */
     void processNumericalEquationsOfMotionSolution( )
     {
-        std::cout<<"processNumericalEquationsOfMotionSolution"<<std::endl;
         if( outputSettings_->getSetIntegratedResult( ) )
         {
             try
@@ -1395,7 +1391,6 @@ private:
     template< typename SimulationResults >
     void performPropagationPostProcessingSteps( const std::shared_ptr< SimulationResults > propagationResults )
     {
-        std::cout<<"performPropagationPostProcessingSteps"<<std::endl;
         // Retrieve number of cumulative function evaluations
         propagationResults->finalizePropagation( dynamicsStateDerivative_->getCumulativeNumberOfFunctionEvaluations( ) );
         PropagationPrintingInterface< SimulationResults, StateScalarType, TimeType >::printSingleArcPostPropagationMessages(
@@ -2396,7 +2391,6 @@ public:
      */
     void processNumericalEquationsOfMotionSolution( )
     {
-        std::cout<<"processNumericalEquationsOfMotionSolution"<<std::endl;
         singleArcDynamicsSimulator_->processNumericalEquationsOfMotionSolution( );
         multiArcDynamicsSimulator_->processNumericalEquationsOfMotionSolution( );
         if( hybridPropagatorSettings_->getOutputSettings( )->getUpdateDependentVariableInterpolator( ) )
