@@ -174,12 +174,9 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
     constantEarthState.segment( 3, 3 ) =
             spice_interface::getBodyCartesianStateAtEpoch( "Earth", "SSB" , "ECLIPJ2000" , "None", 0.0 ).segment( 3, 3 );
     bodySettings.at( "Earth" )->ephemerisSettings = std::make_shared< ConstantEphemerisSettings >( constantEarthState );
-    bodySettings.at( "Earth" )->rotationModelSettings =
-            std::make_shared< SynchronousRotationModelSettings >( "Sun", "ECLIPJ2000", "IAU_Earth" );
 
     SystemOfBodies bodies = createSystemOfBodies( bodySettings );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
-
     // Ensure harmonic gravity has a rotation wrapper before creating metrics
     {
         auto earthGravityField =
@@ -196,24 +193,6 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
         }
     }
 
-    std::vector< std::string > firstOrderPerturbingBodies{ "Earth" };
-    std::map< std::string, std::pair< int, int > > bodySphericalHarmonicExpansions;
-    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 12, 12 );
-    auto fullMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions );
-
-    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 2, 2 );
-    auto truncatedMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions );
-
-    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 0, 0 );
-    auto pointMassMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions );
-
-    auto fullMetric = createSpaceTimeMetric( fullMetricSettings, bodies );
-    auto truncatedMetric = createSpaceTimeMetric( truncatedMetricSettings, bodies );
-    auto pointMassMetric = createSpaceTimeMetric( pointMassMetricSettings, bodies );
-
     const double evaluationTime = 1.05E7;
     bodies.getBody( "Sun" )->setStateFromEphemeris( evaluationTime );
     bodies.getBody( "Earth" )->setStateFromEphemeris( evaluationTime );
@@ -229,6 +208,32 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
                         return Eigen::Quaterniond( earth->getCurrentRotationToLocalFrame( ) );
                     } ) );
 
+    std::vector< std::string > firstOrderPerturbingBodies{ "Earth" };
+    std::map< std::string, std::pair< int, int > > bodySphericalHarmonicExpansions;
+    const int availableDegree = earthGravityField->getDegreeOfExpansion( );
+    const int availableOrder = earthGravityField->getOrderOfExpansion( );
+    const int fullDegree = std::min( 12, availableDegree );
+    const int fullOrder = std::min( 12, availableOrder );
+    auto ppnSet = std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 );
+
+    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( fullDegree, fullOrder );
+    auto fullMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
+            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions, std::vector< std::string >( ), ppnSet );
+
+    const int truncatedDegree = std::min( 2, availableDegree );
+    const int truncatedOrder = std::min( 2, availableOrder );
+    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( truncatedDegree, truncatedOrder );
+    auto truncatedMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
+            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions, std::vector< std::string >( ), ppnSet );
+
+    bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 0, 0 );
+    auto pointMassMetricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
+            firstOrderPerturbingBodies, std::vector< std::string >( ), bodySphericalHarmonicExpansions, std::vector< std::string >( ), ppnSet );
+
+    auto fullMetric = createSpaceTimeMetric( fullMetricSettings, bodies );
+    auto truncatedMetric = createSpaceTimeMetric( truncatedMetricSettings, bodies );
+    auto pointMassMetric = createSpaceTimeMetric( pointMassMetricSettings, bodies );
+
     Eigen::Vector6d earthCenteredKeplerElements;
     earthCenteredKeplerElements << 6378.0E3 + 300E3, 0.013, 1.0238269559089248,
             3.1526292818328812, 1.5807574453453865, 3.1478950321924795;
@@ -240,13 +245,13 @@ BOOST_AUTO_TEST_CASE( testSphericalHarmonicGravityInMetric )
     truncatedMetric->update( testCartesianElements + bodies.getBody( "Earth" )->getState( ), 0.0, true, false );
     pointMassMetric->update( testCartesianElements + bodies.getBody( "Earth" )->getState( ), 0.0, true, false );
 
-    auto legendreCache = std::make_unique< basic_mathematics::LegendreCache >( 12, 12 );
+    auto legendreCache = std::make_unique< basic_mathematics::LegendreCache >( fullDegree, fullOrder );
     const Eigen::Vector3d relativePosition = testCartesianElements.segment( 0, 3 );
 
     const double fullPotential = earthGravityField->getGravitationalPotentialFromInertialPosition(
-            relativePosition, 12, 12, legendreCache.get( ) );
+            relativePosition, fullDegree, fullOrder, legendreCache.get( ) );
     const double truncatedPotential = earthGravityField->getGravitationalPotentialFromInertialPosition(
-            relativePosition, 2, 2, legendreCache.get( ) );
+            relativePosition, truncatedDegree, truncatedOrder, legendreCache.get( ) );
     const double pointMassPotential = earthGravityField->getGravitationalPotentialFromInertialPosition(
             relativePosition, 0, 0, legendreCache.get( ) );
 

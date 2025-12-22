@@ -20,13 +20,14 @@
 #include "tudat/basics/testMacros.h"
 
 #include "tudat/paths.hpp"
-#include "tudat/astro/basic_astro/mathematicalConstants.h"
+#include "tudat/math/basic/mathematicalConstants.h"
 #include "tudat/astro/basic_astro/orbitalElementConversions.h"
 #include "tudat/astro/basic_astro/physicalConstants.h"
 #include "tudat/astro/gravitation/gravityFieldModel.h"
 #include "tudat/astro/orbit_determination/estimatable_parameters/gravitationalParameter.h"
 #include "tudat/astro/orbit_determination/estimatable_parameters/ppnParameters.h"
-#include "tudat/astro/orbit_determination/estimatable_parameters/sphericalHarmonicCoefficients.h"
+#include "tudat/astro/orbit_determination/estimatable_parameters/sphericalHarmonicCosineCoefficients.h"
+#include "tudat/astro/orbit_determination/estimatable_parameters/sphericalHarmonicSineCoefficients.h"
 #include "tudat/astro/orbit_determination/metric_partials/metricPartial.h"
 #include "tudat/astro/orbit_determination/metric_partials/schwarzschildMetricPartial.h"
 #include "tudat/astro/orbit_determination/metric_partials/solarSystemMetricPartials.h"
@@ -34,10 +35,10 @@
 #include "tudat/astro/relativity/solarSystemMetric.h"
 #include "tudat/interface/spice/spiceInterface.h"
 #include "tudat/math/basic/legendrePolynomials.h"
+#include "tudat/simulation/environment_setup/body.h"
 #include "tudat/simulation/environment_setup/createBodies.h"
 #include "tudat/simulation/environment_setup/createMetric.h"
 #include "tudat/simulation/environment_setup/defaultBodies.h"
-#include "tudat/simulation/environment_setup/systemOfBodies.h"
 #include "tudat/simulation/estimation_setup/createEstimatableParameters.h"
 
 namespace tudat
@@ -106,8 +107,7 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
 
     const double evaluationTime = 1.05E7;
     bodies.getBody( "Earth" )->setStateFromEphemeris( evaluationTime );
-    bodies.getBody( "Earth" )->setCurrentRotationToLocalFrameFromEphemeris( evaluationTime );
-    bodies.getBody( "Earth" )->setCurrentRotationToLocalFrameDerivativeFromEphemeris( evaluationTime );
+    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( evaluationTime );
     bodies.getBody( "Sun" )->setStateFromEphemeris( evaluationTime );
 
     Eigen::Matrix< double, 6, 1 > keplerElements;
@@ -195,8 +195,7 @@ BOOST_AUTO_TEST_CASE( testSingleBodySphericalHarmonicPartials )
     auto solarSystemMetric = std::dynamic_pointer_cast< SolarSystemMetric >(
             createSpaceTimeMetric( metricSettings, bodies ) );
 
-    bodies.getBody( "Earth" )->setCurrentRotationToLocalFrameFromEphemeris( 1.05E7 );
-    bodies.getBody( "Earth" )->setCurrentRotationToLocalFrameDerivativeFromEphemeris( 1.05E7 );
+    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( 1.05E7 );
 
     Eigen::Matrix< double, 6, 1 > keplerElements;
     keplerElements << 7500.0E3, 0.1, 30.0 * mathematical_constants::PI / 180.0, 1.7, 2.4, 1.3 * mathematical_constants::PI;
@@ -319,8 +318,10 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricStateAndParameterPartials )
     {
         if( i > 2 )
         {
-            BOOST_CHECK_EQUAL( analyticalReferenceStatePartials.at( i ),
-                               Eigen::Matrix< double, 4, 4 >::Zero( ) );
+            TUDAT_CHECK_MATRIX_CLOSE_FRACTION(
+                    analyticalReferenceStatePartials.at( i ),
+                    ( Eigen::Matrix< double, 4, 4 >::Zero( ) ),
+                    1.0E-31 );
         }
         else
         {
@@ -412,14 +413,14 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricStateAndParameterPartials )
             std::make_shared< estimatable_parameters::SphericalHarmonicEstimatableParameterSettings >(
                     2, 0, 12, 12, "Mercury",
                     estimatable_parameters::spherical_harmonics_cosine_coefficient_block );
-    auto cosineCoefficients = simulation_setup::createVectorParameterToEstimate(
+    auto cosineCoefficients = simulation_setup::createVectorParameterToEstimate< double, double >(
             cosineCoefficientSettings, bodies );
 
     auto sineCoefficientSettings =
             std::make_shared< estimatable_parameters::SphericalHarmonicEstimatableParameterSettings >(
                     2, 1, 12, 12, "Mercury",
                     estimatable_parameters::spherical_harmonics_sine_coefficient_block );
-    auto sineCoefficients = simulation_setup::createVectorParameterToEstimate(
+    auto sineCoefficients = simulation_setup::createVectorParameterToEstimate< double, double >(
             sineCoefficientSettings, bodies );
 
     const auto cosinePartialPair = metricPartial->getParameterPartialFunction( cosineCoefficients );
@@ -658,8 +659,10 @@ BOOST_AUTO_TEST_CASE( testSchwarzschildConsistency )
         }
         else
         {
-            BOOST_CHECK_EQUAL( solarSystemStatePartials.at( i ),
-                               Eigen::Matrix< double, 4, 4 >::Zero( ) );
+            TUDAT_CHECK_MATRIX_CLOSE_FRACTION(
+                    solarSystemStatePartials.at( i ),
+                    ( Eigen::Matrix< double, 4, 4 >::Zero( ) ),
+                    1.0E-31 );
         }
     }
 
@@ -688,4 +691,3 @@ BOOST_AUTO_TEST_SUITE_END( )
 }  // namespace unit_tests
 
 }  // namespace tudat
-

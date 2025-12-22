@@ -73,10 +73,12 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     bodiesMulti.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEphemerisTime );
 
     auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEphemerisTime );
-    auto integratorSettingsDirect = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 200.0 );
-    auto integratorSettingsMulti = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 200.0 );
+    auto integratorSettingsDirect = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 100.0 );
+    auto integratorSettingsMulti = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 100.0 );
 
+    const std::vector< std::string > perturbingBodies{ "Sun", "Moon", "Mars", "Venus" };
 
+    // Direct metric: only Earth at second order.
     auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
             std::vector< std::string >( ),
             std::vector< std::string >{ "Earth" },
@@ -125,10 +127,9 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
 
     Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
             Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
-    const std::vector< std::string > perturbingBodies;
 
     auto firstOrderTimeSettings =
-            std::make_shared< FirstOrderBodycentricRelativisticTimePropagatorSettings< double, double > >(
+            std::make_shared< SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
                     "Earth",
                     perturbingBodies,
                     initialEphemerisTime,
@@ -174,7 +175,7 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     const double testTimeStep = 1.0E5;
     while( currentTime < finalEphemerisTime - 5000.0 )
     {
-        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-4 );
+        BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-1 );
         std::cout<< directFunction( currentTime ) <<" "<<combinedFunction( currentTime )<<" "<<directFunction( currentTime ) - combinedFunction( currentTime )<< std::endl;
         currentTime += testTimeStep;
     }

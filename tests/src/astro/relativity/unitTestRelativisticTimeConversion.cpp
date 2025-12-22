@@ -68,11 +68,12 @@ using namespace tudat::basic_astrodynamics;
 
 BOOST_AUTO_TEST_SUITE( test_RelativisticConversions )
 
+
 BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
 {
 
     std::string spiceKernelsPath = paths::getSpiceKernelPath( );
-    std::string textKernelsPath = paths::getSpiceKernelPath( ) + "/inpop10e_TDB_m100_p100_asc";
+    std::string textKernelsPath = paths::getSpiceKernelPath( ) + "/inpop10e_TCB_m100_p100_asc";
 
     //Load spice kernels.
     std::string kernelsPath = paths::getSpiceKernelPath( );
@@ -97,12 +98,6 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
         { "2000001", "Ceres" },
         { "2000002", "Pallas" },
         { "2000004", "Vesta" },
-        //{ "2000003", "Juno" },
-        //{ "2000006", "Hebe" },
-        //{ "2000007", "Iris" },
-        //{ "2000008", "Flora" },
-        //{ "2000009", "Metis" },
-        //{ "2000010", "Hygiea" }
     };
 
     SystemOfBodies bodies;
@@ -111,7 +106,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
          const std::string& id = idToNamePair.first;
          const std::string& name = idToNamePair.second;
          std::shared_ptr< Body > body = std::make_shared< Body >();
-         double gm = spice_interface::getBodyGravitationalParameter( id ); // / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
+         double gm = spice_interface::getBodyGravitationalParameter( id ) / ( 1.0 - physical_constants::LB_TIME_RATE_TERM );
          body->setGravityFieldModel( std::make_shared< gravitation::GravityFieldModel >( gm ) );
          bodies.addBody( body, name );
      }
@@ -125,39 +120,39 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     std::string centralBody = "Earth"; 
 
     bodies.at( "Sun" )->setEphemeris( createInpopEphemerisFromFiles(
-                                        textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Sun.asc",
-                                        textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Sun.asc" ) );    
+                                        textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Sun.asc",
+                                        textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Sun.asc" ) );    
     bodies.at( "Mercury" )->setEphemeris( createInpopEphemerisFromFiles(
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Mer.asc",
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Mer.asc" ) );
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Mer.asc",
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Mer.asc" ) );
     bodies.at( "Venus" )->setEphemeris( createInpopEphemerisFromFiles(
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Ven.asc",
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Ven.asc" ) );
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Ven.asc",
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Ven.asc" ) );
     bodies.at( "Earth" )->setEphemeris( createInpopEphemerisFromFiles(
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Ear.asc",
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Ear.asc" ) );
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Ear.asc",
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Ear.asc" ) );
     bodies.at( "Moon" )->setEphemeris( createInpopEphemerisFromFiles(
-                                         textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Moo.asc",
-                                         textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Moo.asc",
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Moo.asc",
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Moo.asc",
                                          basic_astrodynamics::JULIAN_DAY_ON_J2000, 1 ) );
     bodies.at( "Mars" )->setEphemeris( createInpopEphemerisFromFiles(
-                                         textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Mar.asc",
-                                         textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Mar.asc" ) );
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Mar.asc",
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Mar.asc" ) );
     bodies.at( "Jupiter" )->setEphemeris( createInpopEphemerisFromFiles(
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Jup.asc",
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Jup.asc" ) );
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Jup.asc",
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Jup.asc" ) );
     bodies.at( "Saturn" )->setEphemeris( createInpopEphemerisFromFiles(
-                                           textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Sat.asc",
-                                           textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Sat.asc" ) );
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Sat.asc",
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Sat.asc" ) );
     bodies.at( "Uranus" )->setEphemeris( createInpopEphemerisFromFiles(
-                                           textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Ura.asc",
-                                           textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Ura.asc" ) );
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Ura.asc",
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Ura.asc" ) );
     bodies.at( "Neptune" )->setEphemeris( createInpopEphemerisFromFiles(
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Nep.asc",
-                                            textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Nep.asc" ) );
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Nep.asc",
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Nep.asc" ) );
     bodies.at( "Pluto" )->setEphemeris( createInpopEphemerisFromFiles(
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_Plu.asc",
-                                          textKernelsPath + "/inpop10e_TDB_m100_p100_asc_vel_Plu.asc" ) );
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Plu.asc",
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Plu.asc" ) );
 
     spice_interface::loadSpiceKernelInTudat( spiceKernelsPath + "/codes_300ast_20100725.bsp");
     spice_interface::loadSpiceKernelInTudat( spiceKernelsPath + "/codes_300ast_20100725.tf");
@@ -168,19 +163,6 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
                                           "Pallas", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
     bodies.at( "Vesta" )->setEphemeris( createTabulatedEphemerisFromSpice(
                                             "Vesta", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Juno" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Juno", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Hebe" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Hebe", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Iris" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Iris", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Flora" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Flora", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Metis" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Metis", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-    // bodies.at( "Hygiea" )->setEphemeris( createTabulatedEphemerisFromSpice(
-    //                                         "Hygiea", initialEphemerisTime - buffer, finalEphemerisTime + buffer, 7200.0, "SSB", "ECLIPJ2000" ) );
-
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
 
     std::vector< std::string > externalBodies;
@@ -207,7 +189,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
                 true,
                 1,
                 TUDAT_NAN,
-                std::make_shared< PropagationPrintSettings >( true, false, 1 * 86400, 0, true, true, true, true, false, false ) );
+                std::make_shared< PropagationPrintSettings >( true, false, 30 * 86400, 0, true, true, true, true, false, false ) );
     std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
 
     std::shared_ptr< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings<double, double > > properTimeEquationSettings =
@@ -217,13 +199,13 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
                 std::vector< std::string  >( ),
                 &basic_astrodynamics::doDummyTimeConversion< double >,
                 1.0,
-                dependentVariablesList,
-                outputProcessingSettings 
+                dependentVariablesList
+                //outputProcessingSettings 
             );
 
     SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >( bodies, properTimeEquationSettings );
 
-    std::string timeDifferenceFileName = textKernelsPath + "/inpop10e_TDB_m100_p100_asc_pos_TT.asc";
+    std::string timeDifferenceFileName = textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_TCG.asc";
 
     std::shared_ptr< interpolators::OneDimensionalInterpolator< double, long double > > timeEphemerisInterpolator =
             input_output::createLongInpopTimeEphemerisInterpolator( timeDifferenceFileName );
@@ -283,17 +265,14 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     
 }
 
-
 BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
 {
-
-    std::string kernelsPath = paths::getSpiceKernelPath( );
     spice_interface::loadStandardSpiceKernels( );
-
-    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop19a_TDB_m100_p100_spice.tpc");
-    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop19a_TDB_m100_p100_spice.bsp");
-    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop19a_TDB_m100_p100_spice.bpc");
-    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop19a_TDB_m100_p100_spice.tf");
+    std::string kernelsPath = paths::getSpiceKernelPath( );
+    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop10e_TDB_m100_p100_spice.tpc");
+    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop10e_TDB_m100_p100_spice.bsp");
+    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop10e_TDB_m100_p100_spice.bpc");
+    spice_interface::loadSpiceKernelInTudat( kernelsPath + "/inpop10e_TDB_m100_p100_spice.tf");
     spice_interface::loadSpiceKernelInTudat( kernelsPath + "/naif0012.tls");
     spice_interface::loadSpiceKernelInTudat( kernelsPath + "/pck00010.tpc");
 
@@ -352,26 +331,26 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     lro->setEphemeris( std::make_shared< ephemerides::KeplerEphemeris >(
                            lroInitialKeplerianElements, initialEphemerisTime, spice_interface::getBodyGravitationalParameter( "Moon" ), "Moon"  ) );
 
-    std::string textKernelsPath = paths::getSpiceKernelPath( ) + "/inpop19a_TCB_m100_p100_asc";
+    std::string textKernelsPath = paths::getSpiceKernelPath( ) + "/inpop10e_TCB_m100_p100_asc";
 
     bodies.addBody( lro, "LRO" );
 
     bodies.at( "Sun" )->setEphemeris( createInpopEphemerisFromFiles(
-                                        textKernelsPath + "/inpop19a_TCB_m100_p100_asc_pos_Sun.asc",
-                                        textKernelsPath + "/inpop19a_TCB_m100_p100_asc_vel_Sun.asc" ) );
+                                        textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Sun.asc",
+                                        textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Sun.asc" ) );
     bodies.at( "Earth" )->setEphemeris( createInpopEphemerisFromFiles(
-                                          textKernelsPath + "/inpop19a_TCB_m100_p100_asc_pos_Ear.asc",
-                                          textKernelsPath + "/inpop19a_TCB_m100_p100_asc_vel_Ear.asc" ) );
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Ear.asc",
+                                          textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Ear.asc" ) );
     bodies.at( "Moon" )->setEphemeris( createInpopEphemerisFromFiles(
-                                         textKernelsPath + "/inpop19a_TCB_m100_p100_asc_pos_Moo.asc",
-                                         textKernelsPath + "/inpop19a_TCB_m100_p100_asc_vel_Moo.asc",
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Moo.asc",
+                                         textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Moo.asc",
                                          basic_astrodynamics::JULIAN_DAY_ON_J2000, 1 ) );
     bodies.at( "Jupiter" )->setEphemeris( createInpopEphemerisFromFiles(
-                                            textKernelsPath + "/inpop19a_TCB_m100_p100_asc_pos_Jup.asc",
-                                            textKernelsPath + "/inpop19a_TCB_m100_p100_asc_vel_Jup.asc" ) );
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Jup.asc",
+                                            textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Jup.asc" ) );
     bodies.at( "Saturn" )->setEphemeris( createInpopEphemerisFromFiles(
-                                           textKernelsPath + "/inpop19a_TCB_m100_p100_asc_pos_Sat.asc",
-                                           textKernelsPath + "/inpop19a_TCB_m100_p100_asc_vel_Sat.asc" ) );
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_pos_Sat.asc",
+                                           textKernelsPath + "/inpop10e_TCB_m100_p100_asc_vel_Sat.asc" ) );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
 
     // Create ground stations
@@ -392,7 +371,7 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
 
     double startTime = initialEphemerisTime;
     double endTime = finalEphemerisTime;
-    double timeStep = 6000.0;
+    double timeStep = 3000.0;
 
     std::shared_ptr< numerical_integrators::IntegratorSettings< double > > integratorSettings =
             numerical_integrators::rungeKutta4Settings( timeStep );
@@ -576,18 +555,18 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-12 );
 }
 
-BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
+BOOST_AUTO_TEST_CASE( test_GT_proper_times )
 {
     spice_interface::loadStandardSpiceKernels( );
-        const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
-        Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
-        const double initialEpoch = issData( 0, 0 );
-        const double finalEpoch   = issData( issData.rows( ) - 1, 0 );
+
+    const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
+    const Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
+    const double initialEpoch = issData( 0, 0 );
+    const double finalEpoch   = initialEpoch + physical_constants::JULIAN_DAY;
 
     const double outputTimeStep = 10.0;
     const double ephemerisBuffer = physical_constants::JULIAN_DAY;
-
-    std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
+    const std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
     const auto globalFrameOrigin      = "Earth";
     const auto globalFrameOrientation = "J2000";
     auto bodySettings = getDefaultBodySettings(
@@ -628,28 +607,8 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
     }
 
     SystemOfBodies bodies = createSystemOfBodies( bodySettings );
-
-    // ISS tabulated ephemeris (epoch [s TDB], x y z vx vy vz in meters and m/s)
-    std::map< double, Eigen::Vector6d > issStateHistory;
-    for( int i = 0; i < issData.rows( ); ++i )
-    {
-        if( issData.cols( ) >= 7 )
-        {
-            Eigen::Vector6d state;
-            state << issData( i, 1 ), issData( i, 2 ), issData( i, 3 ),
-                     issData( i, 4 ), issData( i, 5 ), issData( i, 6 );
-            issStateHistory[ issData( i, 0 ) ] = state;
-        }
-    }
-    auto issInterpolator =
-            std::make_shared< interpolators::LagrangeInterpolator< double, Eigen::Vector6d > >( issStateHistory, 6 );
-    auto issEphemeris = std::make_shared< ephemerides::TabulatedCartesianEphemeris< double, double > >(
-            issInterpolator, globalFrameOrigin, globalFrameOrientation );
-    bodies.createEmptyBody( "ISS" );
-    bodies.getBody( "ISS" )->setEphemeris( issEphemeris );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), globalFrameOrigin, globalFrameOrientation );
 
-    // Initialize translational and rotational states at initial epoch
     for( const auto& bodyName : bodiesToCreate )
     {
         if( bodies.doesBodyExist( bodyName ) )
@@ -658,37 +617,51 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
         }
     }
     bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-    bodies.getBody( "ISS" )->setStateFromEphemeris( initialEpoch );
+
+    // Attach rotation wrapper for harmonic potential evaluation
     {
+        auto earthBody = bodies.getBody( "Earth" );
         auto earthGravity = std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
-                bodies.getBody( "Earth" )->getGravityFieldModel( ) );
-        auto earthRotation = bodies.getBody( "Earth" )->getRotationalEphemeris( );
-        if( earthGravity != nullptr && earthRotation != nullptr )
+                earthBody->getGravityFieldModel( ) );
+        if( earthGravity != nullptr )
         {
-            // Use rotation at initial epoch (stable for tests; time-varying rotation is handled by the ephemeris)
             earthGravity->setRotationWrapper(
                 std::make_shared< reference_frames::QuaternionRotationWrapper >(
-                    [earthRotation, initialEpoch]( )
+                    [earthBody, initialEpoch]( )
                     {
-                        return earthRotation->getRotationToTargetFrame( initialEpoch );
+                        try
+                        {
+                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
+                        }
+                        catch( const std::exception& )
+                        {
+                            auto rot = earthBody->getRotationalEphemeris( );
+                            if( rot != nullptr )
+                            {
+                                return rot->getRotationToTargetFrame( initialEpoch );
+                            }
+                            return Eigen::Quaterniond::Identity( );
+                        }
                     } ) );
         }
     }
 
-    // Ground stations (height [m], latitude/longitude [deg]) - others commented for now
+    // Ground stations (height [m], latitude/longitude [deg])
     std::map< std::string, Eigen::Vector3d > stationGeodetic;
-    stationGeodetic[ "GT101" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.836 ),
+    stationGeodetic[ "SEA_LEVEL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 0.0 ),
+                                   unit_conversions::convertDegreesToRadians( 0.0 ), 0.0 ).finished( );
+    stationGeodetic[ "LTE" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.836 ),
                                  unit_conversions::convertDegreesToRadians( 2.3344 ), 137.5458 ).finished( );
-    // stationGeodetic[ "GT003" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.8359 ),
-    //                              unit_conversions::convertDegreesToRadians( 2.3343 ), 137.5739 ).finished( );
-    // stationGeodetic[ "GT007" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 51.42437417 ),
-    //                              unit_conversions::convertDegreesToRadians( -0.338699387 ), 28.579 ).finished( );
-    // stationGeodetic[ "GT002" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 34.20173389 ),
-    //                              unit_conversions::convertDegreesToRadians( -118.1765639 ), 350.265453 ).finished( );
-    // stationGeodetic[ "GT004" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 52.29646039 ),
-    //                              unit_conversions::convertDegreesToRadians( 10.46394649 ), 146.399 ).finished( );
-    // stationGeodetic[ "GT005" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 35.70784816 ),
-    //                              unit_conversions::convertDegreesToRadians( 139.4878365 ), 135.5472 ).finished( );
+    stationGeodetic[ "NPL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 51.42437417 ),
+                                 unit_conversions::convertDegreesToRadians( -0.338699387 ), 28.579 ).finished( );
+    stationGeodetic[ "JPL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 34.20173389 ),
+                                 unit_conversions::convertDegreesToRadians( -118.1765639 ), 350.265453 ).finished( );
+    stationGeodetic[ "PTB" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 52.29646039 ),
+                                 unit_conversions::convertDegreesToRadians( 10.46394649 ), 146.399 ).finished( );
+    stationGeodetic[ "NICT" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 35.70784816 ),
+                                  unit_conversions::convertDegreesToRadians( 139.4878365 ), 135.5472 ).finished( );
+    stationGeodetic[ "NIST" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 39.995 ),
+                                  unit_conversions::convertDegreesToRadians( -105.2614 ), 1640.0 ).finished( );
     for( const auto& station : stationGeodetic )
     {
         createGroundStation(
@@ -699,7 +672,6 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
     auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
     auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEpoch );
 
-    // Chained: Earth second-order + GT101 topocentric, ISS second-order bodycentric
     const std::vector< std::string > topocentricPerturbingBodies{ "Sun", "Moon" };
     const Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
             Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
@@ -720,25 +692,16 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
                         terminationSettings ) );
     }
     const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun" };
-    const std::vector< std::string > issPerturbingBodies{ "Earth", "Sun", "Moon" };
-    std::map< std::string, std::pair< int, int > > issSphericalHarmonics;
-    issSphericalHarmonics[ "Earth" ] = std::make_pair( 300, 300 );
     std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > converterSettings;
     converterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
             std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
                     "Earth", earthPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
             integratorSettings,
             bodyCentricToTopocentricConversionSettings );
-    converterSettings[ "ISS" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-            std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
-                    "ISS", issPerturbingBodies, initialEpoch, integratorSettings, terminationSettings, issSphericalHarmonics ),
-            integratorSettings );
     setRelativisticTimeConverters( bodies, converterSettings );
 
     auto earthTimeScaleConverter = bodies.getBody( "Earth" )->getTimeScaleConverter( );
-    auto issTimeScaleConverter   = bodies.getBody( "ISS" )->getTimeScaleConverter( );
     BOOST_REQUIRE( earthTimeScaleConverter != nullptr );
-    BOOST_REQUIRE( issTimeScaleConverter   != nullptr );
 
     for( const auto& station : stationGeodetic )
     {
@@ -746,20 +709,10 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
         std::map< double, Eigen::VectorXd > conversionResults;
         for( double epoch = initialEpoch; epoch <= finalEpoch + std::numeric_limits< double >::epsilon( ); epoch += outputTimeStep )
         {
-            Eigen::VectorXd current( 4 );
-            const double tcbMinusStation = earthTimeScaleConverter->getTimeDifference(
-                    barycentric_coordinate_time_scale, local_proper_time_scale, epoch, stationName );
-            const double tcbMinusTcg = earthTimeScaleConverter->getTimeDifference(
-                    barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch, stationName );
             const double tcgMinusStation = earthTimeScaleConverter->getTimeDifference(
                     body_centered_coordinate_time_scale, local_proper_time_scale, epoch, stationName );
-            const double tcbMinusIss = issTimeScaleConverter->getTimeDifference(
-                    barycentric_coordinate_time_scale, body_centered_coordinate_time_scale, epoch );
-
-            current( 0 ) = tcbMinusTcg;                          // TCB - TCG
-            current( 1 ) = tcgMinusStation;                      // TCG - Station
-            current( 2 ) = tcbMinusIss;                          // TCB - ISS (body-centered)
-            current( 3 ) = tcbMinusIss - tcbMinusStation;        // Station - ISS
+            Eigen::VectorXd current( 1 );
+            current( 0 ) = tcgMinusStation;       // TCG - Station
             conversionResults[ epoch ] = current;
         }
 
@@ -767,7 +720,7 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
         boost::filesystem::create_directories( outputDirectory );
         input_output::writeDataMapToTextFile(
                 conversionResults,
-                "test_ISS_proper_time_rate_iau_" + stationName + ".dat",
+                "test_GT_proper_times_" + stationName + ".dat",
                 outputDirectory, "", 16 );
     }
 
@@ -780,6 +733,7 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_metric )
     // Use same ISS tabulated ephemeris and settings as IAU test
     const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
     Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
+    //const double initialEpoch = 814957254.1825004; // MJD 60976.874826388891961 in MWL time --> TDB seconds issData( 0, 0 );
     const double initialEpoch = issData( 0, 0 );
     const double finalEpoch   = issData( issData.rows( ) - 1, 0 );
     const double outputTimeStep = 10.0;
@@ -853,18 +807,31 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_metric )
 
     // Attach rotation wrapper for harmonic potential evaluation
     {
+        auto earthBody = bodies.getBody( "Earth" );
         auto earthGravity = std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
-                bodies.getBody( "Earth" )->getGravityFieldModel( ) );
-        auto earthRotation = bodies.getBody( "Earth" )->getRotationalEphemeris( );
-        if( earthGravity != nullptr && earthRotation != nullptr )
+                earthBody->getGravityFieldModel( ) );
+        if( earthGravity != nullptr )
         {
-            // Use rotation at initial epoch (stable for tests; time-varying rotation is handled by the ephemeris)
+            std::cout << "Metric: setting dynamic rotation wrapper for Earth SH" << std::endl;
             earthGravity->setRotationWrapper(
                 std::make_shared< reference_frames::QuaternionRotationWrapper >(
-                    [earthRotation, initialEpoch]( )
+                    [earthBody, initialEpoch]( )
                     {
-                        return earthRotation->getRotationToTargetFrame( initialEpoch );
+                        try
+                        {
+                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
+                        }
+                        catch( const std::exception& e )
+                        {
+                            std::cout << "Metric wrapper fallback: " << e.what( ) << std::endl;
+                            earthBody->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
+                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
+                        }
                     } ) );
+        }
+        else
+        {
+            std::cout << "Metric: Earth SH gravity not found" << std::endl;
         }
     }
 
