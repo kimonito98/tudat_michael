@@ -72,6 +72,7 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
         std::vector< int > secondOrderBodyList;
         std::map< int, std::function< double( ) > > bodyAngularMomentumFunctions;
         std::map< int, std::shared_ptr< SphericalHarmonicWrapper > > bodySphericalHarmonicGravityWrappers;
+        std::map< int, std::function< void( const double ) > > rotationUpdateFunctions;
 
         std::shared_ptr< relativity::PPNParameterSet > ppnSet = solarSettings->getPpnParameterSet( );
 
@@ -133,6 +134,18 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
                 std::function< Eigen::Matrix3d( ) > rotationDerivativeFunction =
                         std::bind( &Body::getCurrentRotationMatrixDerivativeToLocalFrame, body );
 
+                rotationUpdateFunctions[ i ] =
+                        [ body, currentBody ]( const double t )
+                        {
+                            static int callCount = 0;
+                            if( callCount < 5 )
+                            {
+                                std::cout << "[SH rot-update] body " << currentBody << " at t=" << t << std::endl;
+                            }
+                            ++callCount;
+                            body->setCurrentRotationalStateToLocalFrameFromEphemeris( t );
+                        };
+
                 bodySphericalHarmonicGravityWrappers[ i ] = std::make_shared< SphericalHarmonicWrapper >(
                     harmonicField,
                     std::bind( &Body::getPosition, body ),
@@ -152,7 +165,8 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
             ppnSet,
             bodyAccelerationFunctions,
             bodyAngularMomentumFunctions,
-            bodySphericalHarmonicGravityWrappers );
+            bodySphericalHarmonicGravityWrappers,
+            rotationUpdateFunctions );
 
         break;
     }

@@ -293,6 +293,9 @@ protected:
     //! List of functions returning Cartesian states as function of baseFrameTime (see updateStateDerivativeModel) of bodies influencing time conversion.
     std::vector< std::function< Eigen::Vector6d( ) > > externalBodyStateFunctions_;
 
+    //! Bodies for which spherical-harmonic corrections are applied (index matches external body list).
+    std::map< int, std::shared_ptr< simulation_setup::Body > > sphericalHarmonicBodies_;
+
     std::shared_ptr< propagators::EnvironmentUpdater< double, double > > environmentUpdater_;
 
     std::function< double( const double ) > timeVariableConversionFunction_;
@@ -352,14 +355,16 @@ public:
                         auto legendreCache = std::make_shared< basic_mathematics::LegendreCache >(
                             sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).first,
                             sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).second );
-                        std::shared_ptr< gravitation::SphericalHarmonicsGravityField > shGravityField =
-                                std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >( currentCelestialBody->getGravityFieldModel( ) );
-                        higherOrderGravityFieldPotentialFunctions_[ i ] = [=]( const Eigen::Vector3d& position ) {
-                            return shGravityField->getGravitationalPotentialFromInertialPosition(
-                                        position,
-                                        static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).first ),
-                                        static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).second ) );
-                            };
+                    std::shared_ptr< gravitation::SphericalHarmonicsGravityField > shGravityField =
+                            std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >( currentCelestialBody->getGravityFieldModel( ) );
+                        this->sphericalHarmonicBodies_[ i ] = currentCelestialBody;
+
+                    higherOrderGravityFieldPotentialFunctions_[ i ] = [=]( const Eigen::Vector3d& position ) {
+                        return shGravityField->getGravitationalPotentialFromInertialPosition(
+                                    position,
+                                    static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).first ),
+                                    static_cast< double >( sphericalHarmonicGravityExpansions.at( externalBodies.at( i ) ).second ) );
+                        };
                     }
                 }
             }
@@ -458,6 +463,12 @@ public:
 
         std::map< propagators::IntegratedStateType, Eigen::VectorXd > currentState;
         currentState[ propagators::proper_time ] = ( Eigen::VectorXd( 1 ) << 0.0 ).finished( );
+
+        // Ensure body-fixed frames used in spherical harmonics are evaluated at the current epoch.
+        for( const auto& bodyEntry : this->sphericalHarmonicBodies_ )
+        {
+            bodyEntry.second->setCurrentRotationalStateToLocalFrameFromEphemeris( convertedTime );
+        }
         //environmentUpdater_->updateEnvironment( convertedTime, currentState );
 
         // Calculate state of central body.

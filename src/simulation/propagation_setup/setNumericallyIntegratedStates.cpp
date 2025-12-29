@@ -219,7 +219,7 @@ void resetIntegratedPostNewtonianTimeEphemeris< double, double >(
         const std::pair< std::string, std::string > referencePointIdentifier,
         const std::pair< int, int >& startIndexAndSize )
 {
-    std::cout<<"resetIntegratedPostNewtonianTimeEphemeris"<< std::endl;
+    // resetIntegratedPostNewtonianTimeEphemeris
     if( startIndexAndSize.second != 1 )
     {
         std::cerr<<"Error when resetting integrated time ephemeris, found requested size "<<startIndexAndSize.second<<std::endl;

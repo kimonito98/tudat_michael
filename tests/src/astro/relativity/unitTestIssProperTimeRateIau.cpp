@@ -39,6 +39,7 @@
 #include "tudat/simulation/environment_setup/body.h"
 #include "tudat/simulation/environment_setup/createBodies.h"
 #include "tudat/simulation/environment_setup/createGroundStations.h"
+#include "tudat/simulation/environment_setup/createMetric.h"
 #include "tudat/simulation/environment_setup/createRelativisticTimeConverter.h"
 #include "tudat/simulation/environment_setup/defaultBodies.h"
 #include "tudat/simulation/simulation.h"
@@ -178,7 +179,7 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
     }
 
     const double integratorStep = 10.0;
-    auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
+    auto integratorSettings = numerical_integrators::rungeKutta4Settings( initialEpoch, integratorStep );
     auto terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( finalEpoch );
 
     // Chained: Earth second-order + GT101 topocentric, ISS second-order bodycentric
@@ -257,6 +258,95 @@ BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_iau )
     }
 
     BOOST_CHECK_EQUAL( 1, 1 );
+}
+
+BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_metric )
+{
+    spice_interface::loadStandardSpiceKernels( );
+
+    const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
+    Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
+    const double initialEpoch = issData( 0, 0 );
+    const double finalEpoch   = initialEpoch + 5000.0;
+    const double ephemerisBuffer = physical_constants::JULIAN_DAY;
+
+    std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
+    const auto globalFrameOrigin      = "Earth";
+    const auto globalFrameOrientation = "J2000";
+    auto bodySettings = getDefaultBodySettings(
+                bodiesToCreate, initialEpoch - ephemerisBuffer, finalEpoch + ephemerisBuffer, globalFrameOrigin, globalFrameOrientation );
+
+    bodySettings.at( "Earth" )->rotationModelSettings =
+            std::make_shared< simulation_setup::GcrsToItrsRotationModelSettings >( basic_astrodynamics::iau_2006, globalFrameOrientation );
+
+    SystemOfBodies bodies = createSystemOfBodies( bodySettings );
+
+    // ISS ephemeris from tabulated file (TDB)
+    std::map< double, Eigen::Vector6d > issStateHistory;
+    for( int i = 0; i < issData.rows( ); ++i )
+    {
+        if( issData.cols( ) >= 7 )
+        {
+            Eigen::Vector6d state;
+            state << issData( i, 1 ), issData( i, 2 ), issData( i, 3 ),
+                     issData( i, 4 ), issData( i, 5 ), issData( i, 6 );
+            issStateHistory[ issData( i, 0 ) ] = state;
+        }
+    }
+    auto issInterpolator =
+            std::make_shared< interpolators::LagrangeInterpolator< double, Eigen::Vector6d > >( issStateHistory, 6 );
+    auto issEphemeris = std::make_shared< ephemerides::TabulatedCartesianEphemeris< double, double > >(
+            issInterpolator, globalFrameOrigin, globalFrameOrientation );
+    bodies.createEmptyBody( "ISS" );
+    bodies.getBody( "ISS" )->setEphemeris( issEphemeris );
+    setGlobalFrameBodyEphemerides( bodies.getMap( ), globalFrameOrigin, globalFrameOrientation );
+
+    // Initialize states/rotation
+    for( const auto& bodyName : bodiesToCreate )
+    {
+        if( bodies.doesBodyExist( bodyName ) )
+        {
+            bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
+        }
+    }
+    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
+    bodies.getBody( "ISS" )->setStateFromEphemeris( initialEpoch );
+
+    // Metric settings: second-order Earth, first-order Sun/Moon.
+    auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
+            std::vector< std::string >{ "Sun", "Moon" },
+            std::vector< std::string >{ "Earth" },
+            std::map< std::string, std::pair< int, int > >( ),
+            std::vector< std::string >( ),
+            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ) );
+
+    baseMetric = createSpaceTimeMetric( metricSettings, bodies );
+    evaluatedMetricObjects.clear( );
+    evaluatedMetricObjects[ std::make_pair( "ISS", "" ) ] = baseMetric->Clone( );
+
+    const double integratorStep = 10.0;
+    auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
+    auto terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( finalEpoch );
+
+    auto directFromMetricSettings = std::make_shared< propagators::DirectRelativisticTimePropagatorSettings< double, double > >(
+            std::make_pair( "ISS", "" ),
+            initialEpoch,
+            integratorSettings,
+            terminationSettings );
+
+    // Propagate ISS proper time directly from metric
+    SingleArcDynamicsSimulator< double > dynamicsSimulator(
+                bodies, directFromMetricSettings, true );
+    const auto solution = dynamicsSimulator.getEquationsOfMotionNumericalSolution( );
+    BOOST_REQUIRE( !solution.empty( ) );
+
+    const double coordinateDuration = finalEpoch - initialEpoch;
+    const double properOffset       = solution.rbegin( )->second( 0 ); // integrates Δ(τ) relative to coordinate time
+    const double rateOffset         = properOffset / coordinateDuration;
+
+    // Proper time offset should be small (order 1e-8 of span) and finite
+    BOOST_CHECK_SMALL( std::fabs( rateOffset ), 1.0E-6 );
+    BOOST_CHECK( std::isfinite( properOffset ) );
 }
 
 BOOST_AUTO_TEST_CASE( geoid_clock_LG_rate )

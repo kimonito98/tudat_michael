@@ -86,6 +86,11 @@ void SolarSystemMetric::updateMetric()
 
 void SolarSystemMetric::updateCurrentState( const bool updateEvaluationPointIndependentVariables )
 {
+    for( const auto& updater : rotationUpdateFunctions_ )
+    {
+        updater.second( currentTime_ );
+    }
+
     for ( size_t i = 0; i < bodyGravitationalParameterFunctions_.size(); ++i )
     {
         if ( updateEvaluationPointIndependentVariables )

@@ -152,7 +152,9 @@ public:
             const std::map< int, std::function< double( ) > >& bodyAngularMomentumFunctions =
             ( std::map< int, std::function< double( ) > >( ) ),
             const std::map< int, std::shared_ptr< SphericalHarmonicWrapper > > bodySphericalHarmonicGravityWrappers =
-            ( std::map< int, std::shared_ptr< SphericalHarmonicWrapper > >( ) ) ):
+            ( std::map< int, std::shared_ptr< SphericalHarmonicWrapper > >( ) ),
+            const std::map< int, std::function< void( const double ) > > rotationUpdateFunctions =
+            ( std::map< int, std::function< void( const double ) > >( ) ) ):
         Metric( ),
         bodyList_( bodyList ),
         bodyGravitationalParameterFunctions_( bodyGravitationalParameterFunctions ),
@@ -161,6 +163,7 @@ public:
         bodyAccelerationFunctions_( bodyAccelerationFunctions ),
         bodyAngularMomentumFunctions_( bodyAngularMomentumFunctions ),
         bodySphericalHarmonicGravityWrappers_( bodySphericalHarmonicGravityWrappers ),
+        rotationUpdateFunctions_( rotationUpdateFunctions ),
         ppnParameterSet_( ppnParameterSet )
     {
         currentBodyGravitationalParameters_.resize( bodyList_.size( ) );
@@ -188,6 +191,7 @@ public:
         ppnParameterSet_ = originalMetric.ppnParameterSet_;
         bodyAngularMomentumFunctions_ = originalMetric.bodyAngularMomentumFunctions_;
         bodySphericalHarmonicGravityWrappers_ = originalMetric.bodySphericalHarmonicGravityWrappers_;
+        rotationUpdateFunctions_ = originalMetric.rotationUpdateFunctions_;
         bodyAccelerationFunctions_ = originalMetric.bodyAccelerationFunctions_;
         bodySphericalHarmonicPotentialFunctions_ = originalMetric.bodySphericalHarmonicPotentialFunctions_;
 
@@ -304,6 +308,7 @@ protected:
     std::map< int, std::function< double( ) > > bodyAngularMomentumFunctions_;
     std::map< int, std::function< double( const Eigen::Vector3d& ) > > bodySphericalHarmonicPotentialFunctions_;
     std::map< int, std::shared_ptr< SphericalHarmonicWrapper > > bodySphericalHarmonicGravityWrappers_;
+    std::map< int, std::function< void( const double ) > > rotationUpdateFunctions_;
     std::shared_ptr< PPNParameterSet > ppnParameterSet_;
 
     std::vector< double > currentBodyGravitationalParameters_;

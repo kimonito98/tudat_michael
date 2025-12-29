@@ -1157,7 +1157,7 @@ public:
     void processIntegratedStates(
             const std::map< TimeType, Eigen::Matrix< StateScalarType, Eigen::Dynamic, 1 > >& numericalSolution )
     {
-        std::cout<<"Resetting: "<<stateDerivativeType_<<std::endl;
+        // Reset numerically integrated states
         if( stateDerivativeType_ == direct_from_metric )
         {
             std::cout<<"Resetting B: "<<referencePointIdentifier_.first<<" "<<referencePointIdentifier_.second<<std::endl;
