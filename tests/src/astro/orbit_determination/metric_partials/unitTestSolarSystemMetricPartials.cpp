@@ -75,17 +75,19 @@ SystemOfBodies createBodiesForTest(
 
 void loadStandardKernels( )
 {
+    spice_interface::loadStandardSpiceKernels( );
     const std::string kernelPath = paths::getSpiceKernelPath( );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0012.tls" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00011.tpc" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup310.bsp" );
+    // spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup310.bsp" ); // missing locally
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de440.bsp" );
 }
 
 BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
 {
-    loadStandardKernels( );
+    //loadStandardKernels( );
+    spice_interface::loadStandardSpiceKernels( );
 
     const double initialEphemerisTime = 1.0E7;
     const double finalEphemerisTime = 1.1E7;
@@ -164,7 +166,7 @@ BOOST_AUTO_TEST_CASE( testSingleBodySphericalHarmonicPartials )
 {
     const std::string kernelPath = paths::getSpiceKernelPath( );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" );
+    // spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" ); // missing locally
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );
@@ -240,7 +242,7 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricStateAndParameterPartials )
 {
     const std::string kernelPath = paths::getSpiceKernelPath( );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" );
+    // spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" ); // missing locally
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
     spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );

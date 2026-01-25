@@ -185,11 +185,11 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
     std::shared_ptr< PropagationTimeTerminationSettings > terminationSettings = std::make_shared< propagators::PropagationTimeTerminationSettings >( endTime );
 
     auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
-                true,
-                true,
+                false,
+                false,
                 1,
                 TUDAT_NAN,
-                std::make_shared< PropagationPrintSettings >( true, false, 30 * 86400, 0, true, true, true, true, false, false ) );
+                std::make_shared< PropagationPrintSettings >( ) );
     std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
 
     std::shared_ptr< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings<double, double > > properTimeEquationSettings =
@@ -202,6 +202,7 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
                 dependentVariablesList
                 //outputProcessingSettings 
             );
+    properTimeEquationSettings->getOutputSettings( )->setIntegratedResult( true );
 
     SingleArcDynamicsSimulator< > timeEquationPropagator = SingleArcDynamicsSimulator< >( bodies, properTimeEquationSettings );
 
@@ -238,9 +239,9 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
         currentTime += testTimeStep;
     }
 
-    input_output::writeDataMapToTextFile( timeDifferences2,
-                                    "tcgMinusTcbInpop2.dat",
-                                    tudat::paths::getTudatTestDataPath( ) + "", "", 16);
+    //input_output::writeDataMapToTextFile( timeDifferences2,
+    //                                "tcgMinusTcbInpop2.dat",
+    //                                tudat::paths::getTudatTestDataPath( ) + "", "", 16);
 
     Eigen::VectorXd timesVector = utilities::convertStlVectorToEigenVector(
                 utilities::createVectorFromMapKeys( timeDifferences2 ) );
@@ -257,11 +258,13 @@ BOOST_AUTO_TEST_CASE( test_tcb_to_tcg_conversion )
 
     double maximumDifference = resultDifferenceWithoutTrend.maxCoeff( );
     double minimumDifference = resultDifferenceWithoutTrend.minCoeff( );
+    const double maxAbsDifference = std::max( std::fabs( maximumDifference ), std::fabs( minimumDifference ) );
+    std::cout << "[test_tcb_to_tcg_conversion] max_abs_diff=" << maxAbsDifference << std::endl;
 
     BOOST_CHECK_SMALL( maximumDifference, 5.0E-12 );
     BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 5.0E-12 );
 
-    // std::cout<< "maximumDifference" << maximumDifference << std::endl;
+    std::cout<< "maximumDifference" << maximumDifference << std::endl;
     
 }
 
@@ -381,11 +384,11 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
     Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticTimeState = Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
 
     auto outputProcessingSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
-                true,
-                true,
+                false,
+                false,
                 1,
                 TUDAT_NAN,
-                std::make_shared< PropagationPrintSettings >( true, false, 1 * 86400, 0, true, true, true, true, false, false ) );
+                std::make_shared< PropagationPrintSettings >( ) );
     std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > > dependentVariablesList{};
 
 
@@ -396,12 +399,16 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
                 std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
                     std::make_pair( "Earth", "Graz" ), 0, 4, 0, topocentricPerturbingBodies,
                     initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
-                    dependentVariablesList, outputProcessingSettings ) );
+                    dependentVariablesList,
+                    outputProcessingSettings
+                ) );
     bodyCentricToTopocentricConversionSettings.push_back(
                 std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
                     std::make_pair( "Earth", "Yarragadee" ), 0, 4, 0, topocentricPerturbingBodies,
                     initialRelativisticTimeState, initialEphemerisTime, integratorSettings, terminationSettings,
-                    dependentVariablesList, outputProcessingSettings ) );
+                    dependentVariablesList,
+                    outputProcessingSettings
+                ) );
 
     std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > relativisticConverterSettings;
     relativisticConverterSettings[ "LRO" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
@@ -550,408 +557,13 @@ BOOST_AUTO_TEST_CASE( test_concatenated_conversions )
 
     maximumDifference = forwardBackardTransformationResults.maxCoeff( );
     minimumDifference = forwardBackardTransformationResults.minCoeff( );
+    const double maxAbsDifference = std::max( std::fabs( maximumDifference ), std::fabs( minimumDifference ) );
+    std::cout << "[test_concatenated_conversions] max_abs_diff=" << maxAbsDifference << std::endl;
 
     BOOST_CHECK_SMALL( maximumDifference, 1.0E-12 );
     BOOST_CHECK_SMALL( std::fabs( minimumDifference ), 1.0E-12 );
 }
 
-BOOST_AUTO_TEST_CASE( test_GT_proper_times )
-{
-    spice_interface::loadStandardSpiceKernels( );
-
-    const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
-    const Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
-    const double initialEpoch = issData( 0, 0 );
-    const double finalEpoch   = initialEpoch + physical_constants::JULIAN_DAY;
-
-    const double outputTimeStep = 10.0;
-    const double ephemerisBuffer = physical_constants::JULIAN_DAY;
-    const std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
-    const auto globalFrameOrigin      = "Earth";
-    const auto globalFrameOrientation = "J2000";
-    auto bodySettings = getDefaultBodySettings(
-                bodiesToCreate, initialEpoch - ephemerisBuffer, finalEpoch + ephemerisBuffer, globalFrameOrigin, globalFrameOrientation );
-
-    // WGS84 Earth shape and high-accuracy GCRS->ITRS rotation
-    const double flattening       = 1.0 / 298.257223563;
-    const double equatorialRadius = 6378137.0;
-    bodySettings.at( "Earth" )->shapeModelSettings =
-            std::make_shared< simulation_setup::OblateSphericalBodyShapeSettings >( equatorialRadius, flattening );
-    bodySettings.at( "Earth" )->rotationModelSettings =
-            std::make_shared< simulation_setup::GcrsToItrsRotationModelSettings >( basic_astrodynamics::iau_2006, globalFrameOrientation );
-
-    // Promote Earth gravity to degree/order 300 if available
-    auto earthGravitySettings = std::dynamic_pointer_cast< simulation_setup::SphericalHarmonicsGravityFieldSettings >(
-                bodySettings.at( "Earth" )->gravityFieldSettings );
-    if( earthGravitySettings != nullptr )
-    {
-        const int targetDegree = 300;
-        const int targetOrder  = 300;
-        const int currentDegree = static_cast< int >( earthGravitySettings->getCosineCoefficients( ).rows( ) ) - 1;
-        const int currentOrder  = static_cast< int >( earthGravitySettings->getCosineCoefficients( ).cols( ) ) - 1;
-        const int degreeToCopy  = std::min( currentDegree, targetDegree );
-        const int orderToCopy   = std::min( currentOrder, targetOrder );
-        Eigen::MatrixXd cosine  = Eigen::MatrixXd::Zero( targetDegree + 1, targetOrder + 1 );
-        Eigen::MatrixXd sine    = Eigen::MatrixXd::Zero( targetDegree + 1, targetOrder + 1 );
-        cosine.block( 0, 0, degreeToCopy + 1, orderToCopy + 1 ) =
-                earthGravitySettings->getCosineCoefficients( ).block( 0, 0, degreeToCopy + 1, orderToCopy + 1 );
-        sine.block( 0, 0, degreeToCopy + 1, orderToCopy + 1 ) =
-                earthGravitySettings->getSineCoefficients( ).block( 0, 0, degreeToCopy + 1, orderToCopy + 1 );
-        earthGravitySettings = std::make_shared< simulation_setup::SphericalHarmonicsGravityFieldSettings >(
-                earthGravitySettings->getGravitationalParameter( ),
-                earthGravitySettings->getReferenceRadius( ),
-                cosine, sine,
-                earthGravitySettings->getAssociatedReferenceFrame( ) );
-        earthGravitySettings->resetAssociatedReferenceFrame( "ITRS" );
-        bodySettings.at( "Earth" )->gravityFieldSettings = earthGravitySettings;
-    }
-
-    SystemOfBodies bodies = createSystemOfBodies( bodySettings );
-    setGlobalFrameBodyEphemerides( bodies.getMap( ), globalFrameOrigin, globalFrameOrientation );
-
-    for( const auto& bodyName : bodiesToCreate )
-    {
-        if( bodies.doesBodyExist( bodyName ) )
-        {
-            bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
-        }
-    }
-    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-
-    // Attach rotation wrapper for harmonic potential evaluation
-    {
-        auto earthBody = bodies.getBody( "Earth" );
-        auto earthGravity = std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
-                earthBody->getGravityFieldModel( ) );
-        if( earthGravity != nullptr )
-        {
-            earthGravity->setRotationWrapper(
-                std::make_shared< reference_frames::QuaternionRotationWrapper >(
-                    [earthBody, initialEpoch]( )
-                    {
-                        try
-                        {
-                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
-                        }
-                        catch( const std::exception& )
-                        {
-                            auto rot = earthBody->getRotationalEphemeris( );
-                            if( rot != nullptr )
-                            {
-                                return rot->getRotationToTargetFrame( initialEpoch );
-                            }
-                            return Eigen::Quaterniond::Identity( );
-                        }
-                    } ) );
-        }
-    }
-
-    // Ground stations (height [m], latitude/longitude [deg])
-    std::map< std::string, Eigen::Vector3d > stationGeodetic;
-    stationGeodetic[ "SEA_LEVEL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 0.0 ),
-                                   unit_conversions::convertDegreesToRadians( 0.0 ), 0.0 ).finished( );
-    stationGeodetic[ "LTE" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.836 ),
-                                 unit_conversions::convertDegreesToRadians( 2.3344 ), 137.5458 ).finished( );
-    stationGeodetic[ "NPL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 51.42437417 ),
-                                 unit_conversions::convertDegreesToRadians( -0.338699387 ), 28.579 ).finished( );
-    stationGeodetic[ "JPL" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 34.20173389 ),
-                                 unit_conversions::convertDegreesToRadians( -118.1765639 ), 350.265453 ).finished( );
-    stationGeodetic[ "PTB" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 52.29646039 ),
-                                 unit_conversions::convertDegreesToRadians( 10.46394649 ), 146.399 ).finished( );
-    stationGeodetic[ "NICT" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 35.70784816 ),
-                                  unit_conversions::convertDegreesToRadians( 139.4878365 ), 135.5472 ).finished( );
-    stationGeodetic[ "NIST" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 39.995 ),
-                                  unit_conversions::convertDegreesToRadians( -105.2614 ), 1640.0 ).finished( );
-    for( const auto& station : stationGeodetic )
-    {
-        createGroundStation(
-                bodies.getBody( "Earth" ), station.first, station.second, coordinate_conversions::geodetic_position );
-    }
-
-    const double integratorStep = 10.0;
-    auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
-    auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEpoch );
-
-    const std::vector< std::string > topocentricPerturbingBodies{ "Sun", "Moon" };
-    const Eigen::Matrix< double, Eigen::Dynamic, 1 > initialRelativisticState =
-            Eigen::Matrix< double, Eigen::Dynamic, 1 >::Zero( 1 );
-    std::vector< std::shared_ptr< RelativisticTimeStatePropagatorSettings< double, double > > >
-            bodyCentricToTopocentricConversionSettings;
-    for( const auto& station : stationGeodetic )
-    {
-        bodyCentricToTopocentricConversionSettings.push_back(
-                std::make_shared< BodycenteredToTopocentricTimePropagatorSettings< double, double > >(
-                        std::make_pair( "Earth", station.first ),
-                        false,
-                        4,
-                        true,
-                        topocentricPerturbingBodies,
-                        initialRelativisticState,
-                        initialEpoch,
-                        integratorSettings,
-                        terminationSettings ) );
-    }
-    const std::vector< std::string > earthPerturbingBodies{ "Moon", "Sun" };
-    std::map< std::string, std::shared_ptr< DirectRelativisticTimeConverterSettings<> > > converterSettings;
-    converterSettings[ "Earth" ] = std::make_shared< DirectRelativisticTimeConverterSettings<> >(
-            std::make_shared< propagators::SecondOrderBodyCenteredRelativisticTimeConverterSettings< double, double > >(
-                    "Earth", earthPerturbingBodies, initialEpoch, integratorSettings, terminationSettings ),
-            integratorSettings,
-            bodyCentricToTopocentricConversionSettings );
-    setRelativisticTimeConverters( bodies, converterSettings );
-
-    auto earthTimeScaleConverter = bodies.getBody( "Earth" )->getTimeScaleConverter( );
-    BOOST_REQUIRE( earthTimeScaleConverter != nullptr );
-
-    for( const auto& station : stationGeodetic )
-    {
-        const std::string stationName = station.first;
-        std::map< double, Eigen::VectorXd > conversionResults;
-        for( double epoch = initialEpoch; epoch <= finalEpoch + std::numeric_limits< double >::epsilon( ); epoch += outputTimeStep )
-        {
-            const double tcgMinusStation = earthTimeScaleConverter->getTimeDifference(
-                    body_centered_coordinate_time_scale, local_proper_time_scale, epoch, stationName );
-            Eigen::VectorXd current( 1 );
-            current( 0 ) = tcgMinusStation;       // TCG - Station
-            conversionResults[ epoch ] = current;
-        }
-
-        const std::string outputDirectory = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/";
-        boost::filesystem::create_directories( outputDirectory );
-        input_output::writeDataMapToTextFile(
-                conversionResults,
-                "test_GT_proper_times_" + stationName + ".dat",
-                outputDirectory, "", 16 );
-    }
-
-    BOOST_CHECK_EQUAL( 1, 1 );
-}
-
-BOOST_AUTO_TEST_CASE( ISS_proper_time_rate_metric )
-{
-    spice_interface::loadStandardSpiceKernels( );
-    // Use same ISS tabulated ephemeris and settings as IAU test
-    const std::string issCsvPath = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/iss_tabulated.csv";
-    Eigen::MatrixXd issData = input_output::readMatrixFromFile( issCsvPath, ",", "#" );
-    //const double initialEpoch = 814957254.1825004; // MJD 60976.874826388891961 in MWL time --> TDB seconds issData( 0, 0 );
-    const double initialEpoch = issData( 0, 0 );
-    const double finalEpoch   = issData( issData.rows( ) - 1, 0 );
-    const double outputTimeStep = 10.0;
-    const double ephemerisBuffer = physical_constants::JULIAN_DAY;
-    std::vector< std::string > bodiesToCreate{ "Sun", "Earth", "Moon" };
-    const auto globalFrameOrigin      = "Earth";
-    const auto globalFrameOrientation = "J2000";
-    auto bodySettings = getDefaultBodySettings(
-            bodiesToCreate, initialEpoch - ephemerisBuffer, finalEpoch + ephemerisBuffer, globalFrameOrigin, globalFrameOrientation );
-    // WGS84 Earth shape and high-accuracy GCRS->ITRS rotation
-    const double flattening       = 1.0 / 298.257223563;
-    const double equatorialRadius = 6378137.0;
-    bodySettings.at( "Earth" )->shapeModelSettings =
-            std::make_shared< simulation_setup::OblateSphericalBodyShapeSettings >( equatorialRadius, flattening );
-    bodySettings.at( "Earth" )->rotationModelSettings =
-            std::make_shared< simulation_setup::GcrsToItrsRotationModelSettings >( basic_astrodynamics::iau_2006, globalFrameOrientation );
-    // Promote Earth gravity to degree/order 300 if available
-    auto earthGravitySettings = std::dynamic_pointer_cast< simulation_setup::SphericalHarmonicsGravityFieldSettings >(
-            bodySettings.at( "Earth" )->gravityFieldSettings );
-    if( earthGravitySettings != nullptr )
-    {
-        const int targetDegree = 300;
-        const int targetOrder  = 300;
-        const int currentDegree = static_cast< int >( earthGravitySettings->getCosineCoefficients( ).rows( ) ) - 1;
-        const int currentOrder  = static_cast< int >( earthGravitySettings->getCosineCoefficients( ).cols( ) ) - 1;
-        const int degreeToCopy  = std::min( currentDegree, targetDegree );
-        const int orderToCopy   = std::min( currentOrder, targetOrder );
-        Eigen::MatrixXd cosine  = Eigen::MatrixXd::Zero( targetDegree + 1, targetOrder + 1 );
-        Eigen::MatrixXd sine    = Eigen::MatrixXd::Zero( targetDegree + 1, targetOrder + 1 );
-        cosine.block( 0, 0, degreeToCopy + 1, orderToCopy + 1 ) =
-                earthGravitySettings->getCosineCoefficients( ).block( 0, 0, degreeToCopy + 1, orderToCopy + 1 );
-        sine.block( 0, 0, degreeToCopy + 1, orderToCopy + 1 ) =
-                earthGravitySettings->getSineCoefficients( ).block( 0, 0, degreeToCopy + 1, orderToCopy + 1 );
-        earthGravitySettings = std::make_shared< simulation_setup::SphericalHarmonicsGravityFieldSettings >(
-                earthGravitySettings->getGravitationalParameter( ),
-                earthGravitySettings->getReferenceRadius( ),
-                cosine, sine,
-                earthGravitySettings->getAssociatedReferenceFrame( ) );
-        earthGravitySettings->resetAssociatedReferenceFrame( "ITRS" );
-        bodySettings.at( "Earth" )->gravityFieldSettings = earthGravitySettings;
-    }
-    SystemOfBodies bodies = createSystemOfBodies( bodySettings );
-    // ISS tabulated ephemeris
-    std::map< double, Eigen::Vector6d > issStateHistory;
-    for( int i = 0; i < issData.rows( ); ++i )
-    {
-        if( issData.cols( ) >= 7 )
-        {
-            Eigen::Vector6d state;
-            state << issData( i, 1 ), issData( i, 2 ), issData( i, 3 ),
-                     issData( i, 4 ), issData( i, 5 ), issData( i, 6 );
-            issStateHistory[ issData( i, 0 ) ] = state;
-        }
-    }
-    auto issInterpolator =
-            std::make_shared< interpolators::LagrangeInterpolator< double, Eigen::Vector6d > >( issStateHistory, 6 );
-    auto issEphemeris = std::make_shared< ephemerides::TabulatedCartesianEphemeris< double, double > >(
-            issInterpolator, globalFrameOrigin, globalFrameOrientation );
-    bodies.createEmptyBody( "ISS" );
-    bodies.getBody( "ISS" )->setEphemeris( issEphemeris );
-    setGlobalFrameBodyEphemerides( bodies.getMap( ), globalFrameOrigin, globalFrameOrientation );
-
-    for( const auto& bodyName : bodiesToCreate )
-    {
-        if( bodies.doesBodyExist( bodyName ) )
-        {
-            bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
-        }
-    }
-    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-
-    // Attach rotation wrapper for harmonic potential evaluation
-    {
-        auto earthBody = bodies.getBody( "Earth" );
-        auto earthGravity = std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
-                earthBody->getGravityFieldModel( ) );
-        if( earthGravity != nullptr )
-        {
-            std::cout << "Metric: setting dynamic rotation wrapper for Earth SH" << std::endl;
-            earthGravity->setRotationWrapper(
-                std::make_shared< reference_frames::QuaternionRotationWrapper >(
-                    [earthBody, initialEpoch]( )
-                    {
-                        try
-                        {
-                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
-                        }
-                        catch( const std::exception& e )
-                        {
-                            std::cout << "Metric wrapper fallback: " << e.what( ) << std::endl;
-                            earthBody->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-                            return Eigen::Quaterniond( earthBody->getCurrentRotationToLocalFrame( ) );
-                        }
-                    } ) );
-        }
-        else
-        {
-            std::cout << "Metric: Earth SH gravity not found" << std::endl;
-        }
-    }
-
-    // Ground stations (height [m], latitude/longitude [deg]) - others commented for now
-    std::map< std::string, Eigen::Vector3d > stationGeodetic;
-    stationGeodetic[ "GT101" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.836 ),
-                                 unit_conversions::convertDegreesToRadians( 2.3344 ), 137.5458 ).finished( );
-    // stationGeodetic[ "GT003" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 48.8359 ),
-    //                              unit_conversions::convertDegreesToRadians( 2.3343 ), 137.5739 ).finished( );
-    // stationGeodetic[ "GT007" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 51.42437417 ),
-    //                              unit_conversions::convertDegreesToRadians( -0.338699387 ), 28.579 ).finished( );
-    // stationGeodetic[ "GT002" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 34.20173389 ),
-    //                              unit_conversions::convertDegreesToRadians( -118.1765639 ), 350.265453 ).finished( );
-    // stationGeodetic[ "GT004" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 52.29646039 ),
-    //                              unit_conversions::convertDegreesToRadians( 10.46394649 ), 146.399 ).finished( );
-    // stationGeodetic[ "GT005" ] = ( Eigen::Vector3d( ) << unit_conversions::convertDegreesToRadians( 35.70784816 ),
-    //                              unit_conversions::convertDegreesToRadians( 139.4878365 ), 135.5472 ).finished( );
-    for( const auto& station : stationGeodetic )
-    {
-        createGroundStation(
-                bodies.getBody( "Earth" ), station.first, station.second, coordinate_conversions::geodetic_position );
-    }
-
-    // Metric setup
-    std::vector< std::string > metricBodies{ "Sun", "Earth", "Moon" };
-    auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            metricBodies,
-            std::vector< std::string >( ),
-            std::map< std::string, std::pair< int, int > >( ),
-            std::vector< std::string >( ),
-            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ) );
-    baseMetric = createSpaceTimeMetric( metricSettings, bodies );
-    evaluatedMetricObjects.clear( );
-
-    const double integratorStep = 10.0;
-    auto integratorSettings = numerical_integrators::rungeKutta4Settings( integratorStep );
-    auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEpoch );
-
-    auto directOutputSettings = std::make_shared< SingleArcPropagatorProcessingSettings >(
-            true, true, 1, TUDAT_NAN,
-            std::make_shared< PropagationPrintSettings >( false, false ) );
-
-    // Reset states before metric propagations
-    for( const auto& bodyName : bodiesToCreate )
-    {
-        if( bodies.doesBodyExist( bodyName ) )
-        {
-            bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
-        }
-    }
-    bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-    bodies.getBody( "ISS" )->setStateFromEphemeris( initialEpoch );
-
-    // Direct propagation: ISS (proper time from metric)
-    auto issDirectSettings =
-            std::make_shared< DirectRelativisticTimePropagatorSettings< double, double > >(
-                    std::make_pair( "ISS", "" ),
-                    initialEpoch,
-                    integratorSettings,
-                    terminationSettings,
-                    &basic_astrodynamics::doDummyTimeConversion< double >,
-                    1.0,
-                    std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >( ),
-                    directOutputSettings );
-    SingleArcDynamicsSimulator< double > issDirectDynamics( bodies, issDirectSettings, true );
-
-    auto issTimeScaleConverter   = bodies.getBody( "ISS" )->getTimeScaleConverter( );
-    BOOST_REQUIRE( issTimeScaleConverter   != nullptr );
-
-    const std::string outputDirectory = "/Users/michael.plumaris/aces_data_analysis/Data/Relativistic/";
-    boost::filesystem::create_directories( outputDirectory );
-    for( const auto& station : stationGeodetic )
-    {
-        const std::string stationName = station.first;
-        // Reset states before each station propagation
-        for( const auto& bodyName : bodiesToCreate )
-        {
-            if( bodies.doesBodyExist( bodyName ) )
-            {
-                bodies.getBody( bodyName )->setStateFromEphemeris( initialEpoch );
-            }
-        }
-        bodies.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEpoch );
-        bodies.getBody( "ISS" )->setStateFromEphemeris( initialEpoch );
-        // Direct propagation for this station
-        auto stationDirectSettings =
-                std::make_shared< DirectRelativisticTimePropagatorSettings< double, double > >(
-                        std::make_pair( "Earth", stationName ),
-                        initialEpoch,
-                        integratorSettings,
-                        terminationSettings,
-                        &basic_astrodynamics::doDummyTimeConversion< double >,
-                        1.0,
-                        std::vector< std::shared_ptr< SingleDependentVariableSaveSettings > >( ),
-                        directOutputSettings );
-        SingleArcDynamicsSimulator< double > stationDirectDynamics( bodies, stationDirectSettings, true );
-
-        auto earthTimeScaleConverter = bodies.getBody( "Earth" )->getTimeScaleConverter( );
-        BOOST_REQUIRE( earthTimeScaleConverter != nullptr );
-
-        std::map< double, Eigen::VectorXd > conversionResults;
-        for( double epoch = initialEpoch; epoch <= finalEpoch + std::numeric_limits< double >::epsilon( ); epoch += outputTimeStep )
-        {
-            Eigen::VectorXd current( 3 );
-            const double tcbMinusStation = earthTimeScaleConverter->getTimeDifference(
-                    barycentric_coordinate_time_scale, local_proper_time_scale, epoch, stationName );
-            const double tcbMinusIss = issTimeScaleConverter->getTimeDifference(
-                    barycentric_coordinate_time_scale, local_proper_time_scale, epoch );
-            current( 0 ) = tcbMinusStation;                      // TCB - Station (metric)
-            current( 1 ) = tcbMinusIss;                          // TCB - ISS (metric)
-            current( 2 ) = tcbMinusIss - tcbMinusStation;        // Station - ISS (metric)
-            conversionResults[ epoch ] = current;
-        }
-        input_output::writeDataMapToTextFile(
-                conversionResults,
-                "test_ISS_proper_time_rate_metric_" + stationName + ".dat",
-                outputDirectory, "", 16 );
-    }
-    BOOST_CHECK_EQUAL( 1, 1 );
-}
 
 
 BOOST_AUTO_TEST_SUITE_END( )

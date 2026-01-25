@@ -137,12 +137,6 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
                 rotationUpdateFunctions[ i ] =
                         [ body, currentBody ]( const double t )
                         {
-                            static int callCount = 0;
-                            if( callCount < 5 )
-                            {
-                                std::cout << "[SH rot-update] body " << currentBody << " at t=" << t << std::endl;
-                            }
-                            ++callCount;
                             body->setCurrentRotationalStateToLocalFrameFromEphemeris( t );
                         };
 

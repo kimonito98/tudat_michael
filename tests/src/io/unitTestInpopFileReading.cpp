@@ -32,8 +32,6 @@ BOOST_AUTO_TEST_CASE( test_inpop_time_ephemeris )
     std::shared_ptr< interpolators::OneDimensionalInterpolator< double, double > > timeEphemerisInterpolator =
             createInpopTimeEphemerisInterpolator( timeDifferenceFileName );
 
-    std::cout << timeEphemerisInterpolator->interpolate( basic_astrodynamics::TAI_JULIAN_DAY_AT_TIME_SYNCHRONIZATION ) << std::endl;
-
     BOOST_CHECK_SMALL( timeEphemerisInterpolator->interpolate( ( basic_astrodynamics::TAI_JULIAN_DAY_AT_TIME_SYNCHRONIZATION -
                                                          basic_astrodynamics::JULIAN_DAY_ON_J2000 ) * physical_constants::JULIAN_DAY ), 5.0E-13 );
 }
