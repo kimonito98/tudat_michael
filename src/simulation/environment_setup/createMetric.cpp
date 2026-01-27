@@ -111,9 +111,21 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
 
             bodyStateFunctions.push_back( std::bind( &Body::getState, body ) );
 
-            // TODO: implement or resolve this method properly
-            bodyAccelerationFunctions.push_back(
-                []( const double ){ return Eigen::Vector3d::Zero( ); } );  // <-- TBD: calculateAccelerationFromEphemeris missing
+            if( body->getEphemeris( ) != nullptr )
+            {
+                const double accelerationStep = 10.0;
+                std::shared_ptr< ephemerides::Ephemeris > ephemeris = body->getEphemeris( );
+                bodyAccelerationFunctions.push_back(
+                    [ ephemeris, accelerationStep ]( const double t )
+                    {
+                        return ephemeris->getCartesianAcceleration( t, accelerationStep );
+                    } );
+            }
+            else
+            {
+                bodyAccelerationFunctions.push_back(
+                    []( const double ){ return Eigen::Vector3d::Zero( ); } );
+            }
 
             bodyGravitationalParameterFunctions.push_back(
                 std::bind( &gravitation::GravityFieldModel::getGravitationalParameter,
@@ -148,6 +160,16 @@ std::shared_ptr< relativity::Metric > createSpaceTimeMetric(
                         harmonicMap.at( currentBody ).first + 1,
                         harmonicMap.at( currentBody ).second + 1 ),
                     rotationDerivativeFunction );
+            }
+        }
+
+        if( !solarSettings->getUseBodyAccelerations( ) )
+        {
+            bodyAccelerationFunctions.clear( );
+            for( unsigned int i = 0; i < bodyList.size( ); ++i )
+            {
+                bodyAccelerationFunctions.push_back(
+                    []( const double ){ return Eigen::Vector3d::Zero( ); } );
             }
         }
 

@@ -46,9 +46,11 @@ public:
             maximumDegreeAndOrder_.first + 1,
             maximumDegreeAndOrder_.second + 1 );
 
-        // Wrap the central body position function
+        // Wrap the position functions for the acceleration model (expects output-by-reference)
         std::function< void( Eigen::Vector3d& ) > wrappedCentralBodyPositionFunction =
             [=]( Eigen::Vector3d& output ){ output = centralBodyPositionFunction_( ); };
+        std::function< void( Eigen::Vector3d& ) > wrappedEvaluationPositionFunction =
+            [this]( Eigen::Vector3d& output ){ output = this->getCurrentEvaluationPosition( ); };
 
         // Create Spherical Harmonics cache
         basic_mathematics::SphericalHarmonicsCache harmonicsCache( maximumDegreeAndOrder_.first + 1,
@@ -56,12 +58,12 @@ public:
 
         sphericalHarmonicPotentialGradientModel_ =
             std::make_shared< gravitation::SphericalHarmonicsGravitationalAccelerationModel >(
-                std::bind( &SphericalHarmonicWrapper::getCurrentEvaluationPosition, this ),
+                wrappedEvaluationPositionFunction,
                 std::bind( &gravitation::GravityFieldModel::getGravitationalParameter, sphericalHarmonicGravityField_ ),
                 sphericalHarmonicGravityField_->getReferenceRadius( ),
                 cosineBlock,
                 sineBlock,
-                [=]( Eigen::Vector3d& result ){ result = centralBodyPositionFunction_( ); },
+                wrappedCentralBodyPositionFunction,
                 std::bind( &reference_frames::RotationWrapper::getRotationQuaternion,
                         sphericalHarmonicGravityField_->getRotationToLocalFrameWrapper( ) ),
                 false,

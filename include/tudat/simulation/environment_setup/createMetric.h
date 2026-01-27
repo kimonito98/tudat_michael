@@ -84,13 +84,15 @@ public:
             const std::vector< std::string >& bodiesWithSecondOrderExpansion = { },
             const std::map< std::string, std::pair< int, int > >& bodySphericalHarmonicExpansions = { },
             const std::vector< std::string >& angularMomentumBodies = { },
-            const std::shared_ptr< relativity::PPNParameterSet >& ppnParameterSetToUse = nullptr )
+            const std::shared_ptr< relativity::PPNParameterSet >& ppnParameterSetToUse = nullptr,
+            const bool useBodyAccelerations = true )
         : SpaceTimeMetricSettings( solar_system_metric ),
           bodiesWithFirstOrderExpansion_( bodiesWithFirstOrderExpansion ),
           bodiesWithSecondOrderExpansion_( bodiesWithSecondOrderExpansion ),
           bodySphericalHarmonicExpansions_( bodySphericalHarmonicExpansions ),
           angularMomentumBodies_( angularMomentumBodies ),
-          ppnParameterSet_( ppnParameterSetToUse ) { }
+          ppnParameterSet_( ppnParameterSetToUse ),
+          useBodyAccelerations_( useBodyAccelerations ) { }
 
     std::vector< std::string > getBodiesWithFirstOrderExpansion( ) const
     {
@@ -117,12 +119,18 @@ public:
         return ppnParameterSet_;
     }
 
+    bool getUseBodyAccelerations( ) const
+    {
+        return useBodyAccelerations_;
+    }
+
 private:
     std::vector< std::string > bodiesWithFirstOrderExpansion_;
     std::vector< std::string > bodiesWithSecondOrderExpansion_;
     std::map< std::string, std::pair< int, int > > bodySphericalHarmonicExpansions_;
     std::vector< std::string > angularMomentumBodies_;
     std::shared_ptr< relativity::PPNParameterSet > ppnParameterSet_;
+    bool useBodyAccelerations_;
 };
 
 std::shared_ptr< relativity::Metric > createSpaceTimeMetric(

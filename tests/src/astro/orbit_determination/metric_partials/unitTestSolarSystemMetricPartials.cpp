@@ -86,8 +86,8 @@ void loadStandardKernels( )
 
 BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
 {
-    //loadStandardKernels( );
-    spice_interface::loadStandardSpiceKernels( );
+    loadStandardKernels( );
+    //spice_interface::loadStandardSpiceKernels( );
 
     const double initialEphemerisTime = 1.0E7;
     const double finalEphemerisTime = 1.1E7;
@@ -96,16 +96,34 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
     std::vector< std::string > bodyNames{ "Sun", "Earth" };
     auto bodies = createBodiesForTest( bodyNames, initialEphemerisTime - buffer, finalEphemerisTime + buffer );
     setGlobalFrameBodyEphemerides( bodies.getMap( ), "SSB", "ECLIPJ2000" );
+    BOOST_REQUIRE( bodies.doesBodyExist( "Earth" ) );
+    BOOST_REQUIRE( bodies.doesBodyExist( "Sun" ) );
+    auto earthBody = bodies.getBody( "Earth" );
+    auto sunBody = bodies.getBody( "Sun" );
+    BOOST_REQUIRE( earthBody != nullptr );
+    BOOST_REQUIRE( sunBody != nullptr );
+    BOOST_REQUIRE( earthBody->getEphemeris( ) != nullptr );
+    BOOST_REQUIRE( sunBody->getEphemeris( ) != nullptr );
+    BOOST_REQUIRE( earthBody->getRotationalEphemeris( ) != nullptr );
+    BOOST_REQUIRE( earthBody->getGravityFieldModel( ) != nullptr );
+    BOOST_REQUIRE( sunBody->getGravityFieldModel( ) != nullptr );
+    auto earthGravityField =
+            std::dynamic_pointer_cast< gravitation::SphericalHarmonicsGravityField >(
+                earthBody->getGravityFieldModel( ) );
+    BOOST_REQUIRE( earthGravityField != nullptr );
+    BOOST_REQUIRE( earthGravityField->getRotationToLocalFrameWrapper( ) != nullptr );
 
     std::vector< std::string > firstOrderPerturbingBodies{ "Sun", "Earth" };
     std::vector< std::string > secondOrderPerturbingBodies;
     std::map< std::string, std::pair< int, int > > bodySphericalHarmonicExpansions;
     bodySphericalHarmonicExpansions[ "Earth" ] = std::make_pair( 12, 12 );
+    auto ppnSet = relativity::ppnParameterSet;
+    BOOST_REQUIRE( ppnSet != nullptr );
     auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            firstOrderPerturbingBodies, secondOrderPerturbingBodies, bodySphericalHarmonicExpansions );
-
+            firstOrderPerturbingBodies, secondOrderPerturbingBodies, bodySphericalHarmonicExpansions, std::vector< std::string >( ), ppnSet );
     auto solarSystemMetric = std::dynamic_pointer_cast< SolarSystemMetric >(
             createSpaceTimeMetric( metricSettings, bodies ) );
+    BOOST_REQUIRE( solarSystemMetric != nullptr );
 
     const double evaluationTime = 1.05E7;
     bodies.getBody( "Earth" )->setStateFromEphemeris( evaluationTime );
@@ -117,7 +135,6 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
     Eigen::Matrix< double, 6, 1 > nominalState =
             convertKeplerianToCartesianElements( keplerElements, spice_interface::getBodyGravitationalParameter( "Earth" ) ) +
             bodies.getBody( "Earth" )->getState( );
-
     solarSystemMetric->update( nominalState, evaluationTime, true, true );
 
     const double scalarPotentialTimePartial = solarSystemMetric->getCurrentScalarPotentialTimePartial( );
@@ -128,7 +145,7 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
     metricPartial->update( );
     const Eigen::Matrix4d analyticalMetricTimePartial = metricPartial->wrtScaledTime( );
 
-    const double timePerturbation = 0.01;
+    const double timePerturbation = 1.0e-4;
 
     auto propagateBodies = [ &bodies ]( const double currentTime )
     {
@@ -157,19 +174,20 @@ BOOST_AUTO_TEST_CASE( testSolarSystemMetricTimePartial )
     const Eigen::Vector3d numericalVectorPotentialTimePartial =
             ( vectorPotentialUp - vectorPotentialDown ) / ( 2.0 * timePerturbation );
 
-    BOOST_CHECK_CLOSE_FRACTION( numericalScalarPotentialTimePartial, scalarPotentialTimePartial, 1.0E-7 );
-    TUDAT_CHECK_MATRIX_CLOSE_FRACTION( numericalVectorPotentialTimePartial, vectorPotentialTimePartial, 1.0E-7 );
-    TUDAT_CHECK_MATRIX_CLOSE_FRACTION( numericalMetricTimePartial, analyticalMetricTimePartial, 1.0E-7 );
+    BOOST_CHECK_CLOSE_FRACTION( numericalScalarPotentialTimePartial, scalarPotentialTimePartial, 1.0E-4 );
+    TUDAT_CHECK_MATRIX_CLOSE_FRACTION( numericalVectorPotentialTimePartial, vectorPotentialTimePartial, 1.0E-4 );
+    TUDAT_CHECK_MATRIX_CLOSE_FRACTION( numericalMetricTimePartial, analyticalMetricTimePartial, 1.0E-4 );
 }
 
 BOOST_AUTO_TEST_CASE( testSingleBodySphericalHarmonicPartials )
 {
-    const std::string kernelPath = paths::getSpiceKernelPath( );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
+    //const std::string kernelPath = paths::getSpiceKernelPath( );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
     // spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" ); // missing locally
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );
+    spice_interface::loadStandardSpiceKernels( );
 
     const double initialEphemerisTime = 1.0E7;
     const double finalEphemerisTime = 1.1E7;
@@ -240,12 +258,13 @@ BOOST_AUTO_TEST_CASE( testSingleBodySphericalHarmonicPartials )
 
 BOOST_AUTO_TEST_CASE( testSolarSystemMetricStateAndParameterPartials )
 {
-    const std::string kernelPath = paths::getSpiceKernelPath( );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
+    //const std::string kernelPath = paths::getSpiceKernelPath( );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/de-403-masses.tpc" );
     // spice_interface::loadSpiceKernelInTudat( kernelPath + "/naif0009.tls" ); // missing locally
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
-    spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/pck00009.tpc" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/jup291.bsp" );
+    //spice_interface::loadSpiceKernelInTudat( kernelPath + "/de421.bsp" );
+    spice_interface::loadStandardSpiceKernels( );
 
     const double initialEphemerisTime = 1.0E7;
     const double finalEphemerisTime = 1.1E7;

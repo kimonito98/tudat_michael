@@ -12,3 +12,7 @@ TUDAT_ADD_TEST_CASE(MetricPartials
         ${Tudat_ESTIMATION_LIBRARIES}
         )
 
+TUDAT_ADD_TEST_CASE(SolarSystemMetricPartials
+        PRIVATE_LINKS
+        ${Tudat_ESTIMATION_LIBRARIES}
+        )

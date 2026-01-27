@@ -73,18 +73,19 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     bodiesMulti.getBody( "Earth" )->setCurrentRotationalStateToLocalFrameFromEphemeris( initialEphemerisTime );
 
     auto terminationSettings = std::make_shared< PropagationTimeTerminationSettings >( finalEphemerisTime );
-    auto integratorSettingsDirect = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 100.0 );
-    auto integratorSettingsMulti = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 100.0 );
+    auto integratorSettingsDirect = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 10.0 );
+    auto integratorSettingsMulti = numerical_integrators::rungeKutta4SettingsDeprecated( initialEphemerisTime, 10.0 );
 
     const std::vector< std::string > perturbingBodies{ "Sun", "Moon", "Mars", "Venus" };
 
     // Direct metric: only Earth at second order.
     auto metricSettings = std::make_shared< SolarSystemSpaceTimeMetricSettings >(
-            std::vector< std::string >( ),
+            perturbingBodies,
             std::vector< std::string >{ "Earth" },
             std::map< std::string, std::pair< int, int > >( ),
             std::vector< std::string >( ),
-            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ) );
+            std::make_shared< relativity::PPNParameterSet >( 1.0, 1.0 ),
+            false );
 
     baseMetric = createSpaceTimeMetric( metricSettings, bodiesDirect );
     evaluatedMetricObjects.clear( );
@@ -176,9 +177,9 @@ BOOST_AUTO_TEST_CASE( testCombinedProperTimeAndStateDynamics2 )
     while( currentTime < finalEphemerisTime - 5000.0 )
     {
         BOOST_CHECK_SMALL( directFunction( currentTime ) - combinedFunction( currentTime ), 1.0E-1 );
-        std::cout<< directFunction( currentTime ) <<" "<<combinedFunction( currentTime )<<" "<<directFunction( currentTime ) - combinedFunction( currentTime )<< std::endl;
         currentTime += testTimeStep;
     }
+    BOOST_CHECK_SMALL( directFunction( finalEphemerisTime ) - combinedFunction( finalEphemerisTime ), 1.0E-6 );
 }
 
 BOOST_AUTO_TEST_SUITE_END( )
