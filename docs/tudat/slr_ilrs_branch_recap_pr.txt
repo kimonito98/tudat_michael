@@ -1,0 +1,145 @@
+ILRS/SLR Branch Recap (for PR)
+==============================
+
+Scope decisions in this revision
+--------------------------------
+- SINEX is treated as the single source of truth for ILRS station geometry.
+- The SLR ellipsoidal list parser (slr.ell) was removed from the branch scope.
+- The CRD+SINEX station-construction helper was removed from the public API; station construction is now explicitly DOMES+SINEX driven.
+
+Implemented functionality
+-------------------------
+
+1) CRD reader and measurement extraction
+- Added CRD v2 reader:
+  - readCrdFile(...)
+  - readCrdFiles(...)
+- Parsed record groups include:
+  - H2/H3/H4/C0 headers/config
+  - 10 full-rate observations
+  - 11 normal-point observations
+  - 20 meteorology records
+- Added two-way TOF -> one-way SLR range conversion:
+  - convertCrdTwoWayTimeOfFlightToSlrRange(...)
+- Added extraction/grouping helpers:
+  - extractNormalPointMeasurements(...)
+  - extractFullRateMeasurements(...)
+  - groupCrdDataPerStation(...)
+  - groupCrdDataPerTarget(...)
+  - getStationWavelengths(...)
+
+2) SINEX readers and ILRS registry parsing
+- Added SINEX station state parsing:
+  - readSinexStationData(...)
+  - state fields: STAX/STAY/STAZ, VELX/VELY/VELZ, reference epoch
+- Added SINEX eccentricity arc parsing:
+  - readSinexStationEccentricities(...)
+  - arc start/end epoch conversion and open-end support
+- Added ILRS SITE/ID registry parsing:
+  - readIlrsStationRegistryFromSinexSiteId(...)
+  - maps station code -> {station name, DOMES, approx lon/lat/h}
+
+3) ILRS station creation from SINEX
+- Added default resource path helpers:
+  - getDefaultIlrsSinexStateFilePath()
+  - getDefaultIlrsSinexEccentricityFilePath()
+- Added DOMES-based station factory:
+  - getIlrsStationSettingsFromSinexDomes(...)
+- Station state composition in Tudat:
+  - nominal Cartesian position from SINEX state file
+  - piecewise-constant eccentricity displacement from SINEX eccentricity arcs
+  - linear station velocity motion from SINEX VELX/VELY/VELZ
+- Removed:
+  - getIlrsStationSettingsFromCrdAndSinex(...)
+
+4) VMF3o light-time correction support
+- Added correction type:
+  - vmf3o_tropospheric
+- Added settings helper:
+  - vmf3oTroposphericCorrectionSettings(..., observationWavelengthNm)
+- Reused VMF3 mapping equation/time handling/hydrostatic-wet split.
+- Added VMF3o-specific coefficient loading:
+  - vmf3o_SH/anm_*.txt
+  - vmf3o_SH/bnm_*.txt
+- Added wavelength correction loading from CF_ABC.txt.
+- Added internal code<->DOMES station-name mapping option in VMF loader:
+  - setVmfTroposphereCorrections(..., retrieveMappingInternally=true)
+
+5) Observation dependent variable for link-end epochs
+- Added dependent variable type:
+  - link_end_epochs_dependent_variable
+- Exposes internally solved n-way link-end epochs (n_way_range / dsn_n_way_range).
+
+TudatPy exposures added/updated
+-------------------------------
+
+1) data module
+- Exposed CRD reader and extraction helpers.
+- Exposed SINEX station state, eccentricity, and ILRS registry readers.
+- Removed slr.ell exposure (read_slr_ell_*).
+
+2) ground_station setup module
+- Exposed:
+  - default_ilrs_sinex_state_file
+  - default_ilrs_sinex_eccentricity_file
+  - ilrs_stations_from_sinex_domes
+- Removed:
+  - ilrs_stations_from_crd_and_sinex
+
+3) light_time_corrections module
+- Exposed vmf3o_tropospheric_light_time_correction(...)
+- Exposed set_vmf_troposphere_data(..., retrieve_mapping_internally=False)
+
+4) observations_dependent_variables module
+- Exposed link_end_epochs_dependent_variable(...)
+
+5) Local-only helper not part of this commit
+- The additional gravity-field helper binding in expose_environment.cpp is intentionally not included in the commit set for this PR scope.
+
+Unit tests
+----------
+
+1) IO tests (test_io_CrdAndSinexReaders)
+- testCrdParsingAndConversion
+- testSinexStateParsing
+- testSinexSiteIdMonumentMapping
+- testIlrsStationRegistryFromSinexSiteId
+- testSinexEccentricityParsing
+
+2) Station loader tests (test_simulation_IlrsStationLoader)
+- testLoadIlrsStationFromDomesAndSinex
+- testEccentricitySelectionByEpoch
+- Removed test that depended on CRD+SINEX helper:
+  - testLoadIlrsStationsFromCrdAndSinex
+
+3) Observation-dependent variable test
+- testNWayRangeLinkEndEpochDependentVariable
+
+4) Atmosphere correction test
+- testVmf3oCorrectionType
+
+Current verification status
+---------------------------
+- Passing in build_check:
+  - test_io_CrdAndSinexReaders
+  - test_simulation_IlrsStationLoader
+  - testNWayRangeLinkEndEpochDependentVariable
+- Note:
+  - testVmf3oCorrectionType currently has one assertion mismatch in the local tree
+    (expected throw at zero wavelength in settings factory vs runtime validation location).
+
+Resources added for next commit payload
+---------------------------------------
+The following files were added in repo under resource-like layout for packaging/integration:
+
+- resource/station_locations/SLRF2020_POS+VEL_2025.05.13.snx
+- resource/station_locations/slrecc.250513.ILRS.xyz.snx
+- resource/atmosphere_tables/vmf3o/CF_ABC.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/anm_bh.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/anm_bw.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/anm_ch.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/anm_cw.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/bnm_bh.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/bnm_bw.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/bnm_ch.txt
+- resource/atmosphere_tables/vmf3o/vmf3o_SH/bnm_cw.txt

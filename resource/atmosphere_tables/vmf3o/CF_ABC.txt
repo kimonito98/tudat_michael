@@ -1,0 +1,13 @@
+% Correction factor cf = A/wl^B+C with wl...requested wavelength in nm
+% Compute any parameter using p_{wl} = p_{532}*cf
+% Columns: A B C
+% Rows: a_h a_w ZHD ZWD Gn_h Ge_h Gn_w Ge_w
+% 
+      992.41  1.9896  0.9964
+    10547.86  2.0306  0.9699
+    48810.00  2.1730  0.9423
+   772810.64  2.5042  0.8853
+    44970.00  2.1600  0.9431
+    74250.00  2.2495  0.9468
+        1.00  0.0000  0.0000
+        1.00  0.0000  0.0000

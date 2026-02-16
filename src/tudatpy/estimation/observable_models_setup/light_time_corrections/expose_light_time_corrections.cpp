@@ -419,7 +419,14 @@ Examples
            py::arg( "bodies" ),
            py::arg( "set_troposphere_data" ) = true,
            py::arg( "set_meteo_data" ) = true,
-           py::arg( "interpolator_settings" ) = ti::cubicSplineInterpolation( ) );
+           py::arg( "interpolator_settings" ) = ti::cubicSplineInterpolation( ),
+           py::arg( "retrieve_mapping_internally" ) = false,
+           R"doc(
+Set VMF/VMF3/VMF3o troposphere (and optional meteo) data in Earth ground stations.
+
+If ``retrieve_mapping_internally`` is ``True``, station-name matching first attempts direct key matching and then
+internally maps ILRS station code <-> DOMES identifiers using the default ILRS SINEX ``SITE/ID`` registry.
+           )doc" );
 
     m.def( "set_ionosphere_model_from_ionex",
            &tom::setIonosphereModelFromIonex,
