@@ -37,6 +37,7 @@ set(io_SOURCES
         "readTrackingTxtFile.cpp"
         "readVariousPdsFiles.cpp"
         "readViennaMappingFunctionData.cpp"
+        "readSp3File.cpp"
 )
 
 # Add header files.
@@ -78,6 +79,7 @@ set(io_HEADERS
         "readTabulatedWeatherData.h"
         "readTrackingTxtFile.h"
         "readVariousPdsFiles.h"
+        "readSp3File.h"
         )
 
 # Add library.
@@ -87,4 +89,3 @@ TUDAT_ADD_LIBRARY("input_output"
 #        PRIVATE_LINKS "${Boost_LIBRARIES}"
 #        PRIVATE_INCLUDES "${EIGEN3_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}"
         )
-

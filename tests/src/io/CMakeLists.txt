@@ -116,6 +116,12 @@ TUDAT_ADD_TEST_CASE(AerodynamicCoefficientReader
 TUDAT_ADD_TEST_CASE(OdfFileReader
         PRIVATE_LINKS ${Tudat_ESTIMATION_LIBRARIES} )
 
+TUDAT_ADD_TEST_CASE(Sp3FileReader
+        PRIVATE_LINKS
+        tudat_input_output
+        tudat_basic_astrodynamics
+        )
+
 TUDAT_ADD_TEST_CASE(ReadTabulatedMediaCorrections
         PRIVATE_LINKS ${Tudat_ESTIMATION_LIBRARIES} )
 
