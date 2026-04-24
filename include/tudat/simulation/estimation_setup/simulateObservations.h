@@ -16,6 +16,10 @@
 #include <functional>
 
 #include "tudat/astro/observation_models/observationSimulator.h"
+#include "tudat/astro/observation_models/oneWayRangeObservationModel.h"
+#include "tudat/astro/observation_models/nWayRangeObservationModel.h"
+#include "tudat/astro/observation_models/oneWayDopplerObservationModel.h"
+#include "tudat/astro/observation_models/dsnNWayRangeObservationModel.h"
 #include "tudat/simulation/estimation_setup/observationCollection.h"
 #include "tudat/basics/utilities.h"
 #include "tudat/math/basic/leastSquaresEstimation.h"
@@ -31,6 +35,82 @@ namespace tudat
 
 namespace simulation_setup
 {
+
+//! Extract, from an observation model, the LightTimeCalculator associated with each leg of the
+//! underlying light-time computation, keyed by (transmitter link-end type, receiver link-end type).
+//!
+//! Used by `ObservationDependentVariableCalculator` to resolve the
+//! `light_time_correction_components` dependent variable. Currently supports: one-way range,
+//! n-way range, DSN n-way range, and one-way Doppler (ObservationSize = 1). For unsupported
+//! observation types the returned map is empty, and requesting `light_time_correction_components`
+//! for such a type yields a clear error at setup.
+template< int ObservationSize, typename ObservationScalarType, typename TimeType >
+ObservationDependentVariableCalculator::LegLightTimeCalculatorMap extractLegLightTimeCalculators(
+        const std::shared_ptr< observation_models::ObservationModel< ObservationSize, ObservationScalarType, TimeType > > observationModel )
+{
+    ObservationDependentVariableCalculator::LegLightTimeCalculatorMap legMap;
+    if( observationModel == nullptr )
+    {
+        return legMap;
+    }
+
+    // One-way range
+    if( auto oneWay = std::dynamic_pointer_cast<
+                observation_models::OneWayRangeObservationModel< ObservationScalarType, TimeType > >( observationModel ) )
+    {
+        legMap[ std::make_pair( observation_models::transmitter, observation_models::receiver ) ] = oneWay->getLightTimeCalculator( );
+        return legMap;
+    }
+
+    // One-way Doppler
+    if( auto oneWayDoppler = std::dynamic_pointer_cast<
+                observation_models::OneWayDopplerObservationModel< ObservationScalarType, TimeType > >( observationModel ) )
+    {
+        legMap[ std::make_pair( observation_models::transmitter, observation_models::receiver ) ] = oneWayDoppler->getLightTimeCalculator( );
+        return legMap;
+    }
+
+    // Note: angular-position / relative-angular-position observables (ObservationSize = 2) are
+    // not handled here — `dynamic_pointer_cast` across incompatible `ObservationSize` template
+    // parameters is a compile-time type error. If you need `light_time_correction_components`
+    // for those observables, add an `ObservationSize == 2`-specialised overload.
+
+    // N-way range: leg i goes from `getNWayLinkEnumFromIndex(i, N)` to `getNWayLinkEnumFromIndex(i + 1, N)`.
+    if( auto nWayRange = std::dynamic_pointer_cast<
+                observation_models::NWayRangeObservationModel< ObservationScalarType, TimeType > >( observationModel ) )
+    {
+        const auto legCalculators = nWayRange->getLightTimeCalculators( );
+        const int numberOfLinkEnds = static_cast< int >( legCalculators.size( ) ) + 1;
+        for( unsigned int i = 0; i < legCalculators.size( ); i++ )
+        {
+            const auto fromType = observation_models::getNWayLinkEnumFromIndex( static_cast< int >( i ), numberOfLinkEnds );
+            const auto toType = observation_models::getNWayLinkEnumFromIndex( static_cast< int >( i ) + 1, numberOfLinkEnds );
+            legMap[ std::make_pair( fromType, toType ) ] = legCalculators.at( i );
+        }
+        return legMap;
+    }
+
+    // DSN n-way range wraps a MultiLegLightTimeCalculator.
+    if( auto dsn = std::dynamic_pointer_cast<
+                observation_models::DsnNWayRangeObservationModel< ObservationScalarType, TimeType > >( observationModel ) )
+    {
+        const auto multiLeg = dsn->getLightTimeCalculator( );
+        if( multiLeg != nullptr )
+        {
+            const auto legCalculators = multiLeg->getLightTimeCalculators( );
+            const int numberOfLinkEnds = static_cast< int >( legCalculators.size( ) ) + 1;
+            for( unsigned int i = 0; i < legCalculators.size( ); i++ )
+            {
+                const auto fromType = observation_models::getNWayLinkEnumFromIndex( static_cast< int >( i ), numberOfLinkEnds );
+                const auto toType = observation_models::getNWayLinkEnumFromIndex( static_cast< int >( i ) + 1, numberOfLinkEnds );
+                legMap[ std::make_pair( fromType, toType ) ] = legCalculators.at( i );
+            }
+        }
+        return legMap;
+    }
+
+    return legMap;
+}
 
 template< int ObservationSize = 1, typename ObservationScalarType = double, typename TimeType = double >
 void addNoiseAndDependentVariableToObservation(
@@ -379,6 +459,14 @@ std::shared_ptr< observation_models::SingleObservationSet< ObservationScalarType
     //! Function to create an list of obervation viability conditions for a single set of link ends
 
     std::function< Eigen::VectorXd( const double ) > noiseFunction = observationsToSimulate->getObservationNoiseFunction( );
+
+    // Wire the per-leg LightTimeCalculator map into the calculator so that any deferred
+    // `light_time_correction_components` dependent variables can be resolved.
+    if( observationsToSimulate->getDependentVariableCalculator( ) != nullptr )
+    {
+        observationsToSimulate->getDependentVariableCalculator( )->setLegLightTimeCalculators(
+                extractLegLightTimeCalculators< ObservationSize, ObservationScalarType, TimeType >( observationModel ) );
+    }
 
     // Simulate observations from tabulated times.
     if( std::dynamic_pointer_cast< TabulatedObservationSimulationSettings< TimeType > >( observationsToSimulate ) != nullptr )

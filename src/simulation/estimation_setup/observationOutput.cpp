@@ -17,6 +17,56 @@ namespace tudat
 namespace simulation_setup
 {
 
+namespace
+{
+
+//! Resolve, for the given `LightTimeCorrectionComponentsDependentVariableSettings`, which entries
+//! of the LightTimeCalculator's per-correction cache should populate the dependent-variable
+//! vector. If the settings object carries no filter, the order and size matches the calculator's
+//! registered corrections; otherwise each requested correction type is matched against the
+//! first registered correction of that type (missing types produce a clear error).
+std::vector< int > resolveLightTimeCorrectionSourceIndices(
+        const std::shared_ptr< LightTimeCorrectionComponentsDependentVariableSettings >& lightTimeSettings,
+        const std::shared_ptr< observation_models::LightTimeCalculatorBase >& lightTimeCalculator )
+{
+    const auto registeredCorrections = lightTimeCalculator->getLightTimeCorrectionList( );
+    const auto& filter = lightTimeSettings->correctionTypeFilter_;
+
+    std::vector< int > sourceIndices;
+    if( filter.empty( ) )
+    {
+        sourceIndices.resize( registeredCorrections.size( ) );
+        for( unsigned int i = 0; i < registeredCorrections.size( ); i++ )
+        {
+            sourceIndices[ i ] = static_cast< int >( i );
+        }
+        return sourceIndices;
+    }
+
+    for( const observation_models::LightTimeCorrectionType requestedType: filter )
+    {
+        int matched = -1;
+        for( unsigned int i = 0; i < registeredCorrections.size( ); i++ )
+        {
+            if( registeredCorrections[ i ]->getLightTimeCorrectionType( ) == requestedType )
+            {
+                matched = static_cast< int >( i );
+                break;
+            }
+        }
+        if( matched < 0 )
+        {
+            throw std::runtime_error(
+                    "Error when adding light_time_correction_components dependent variable: requested correction type '" +
+                    observation_models::getLightTimeCorrectionName( requestedType ) + "' is not registered on this leg." );
+        }
+        sourceIndices.push_back( matched );
+    }
+    return sourceIndices;
+}
+
+}  // namespace
+
 void checkObservationDependentVariableEnvironment(
         const SystemOfBodies &bodies,
         const std::shared_ptr< StationAngleObservationDependentVariableSettings > variableSettings )
@@ -532,6 +582,12 @@ ObservationDependentVariableFunction getObservationVectorDependentVariableFuncti
             };
             break;
         }
+        case light_time_correction_components: {
+            throw std::runtime_error(
+                    "Error in observation dependent variables: light_time_correction_components is handled by "
+                    "ObservationDependentVariableCalculator::addDependentVariable, not by the generic vector factory." );
+            break;
+        }
         default:
             throw std::runtime_error( "Error when parsing vector observation dependent variable, did not recognize variable" +
                                       getObservationDependentVariableId( variableSettings ) );
@@ -539,47 +595,142 @@ ObservationDependentVariableFunction getObservationVectorDependentVariableFuncti
     return outputFunction;
 }
 
+void ObservationDependentVariableCalculator::registerLightTimeCorrectionComponents(
+        const std::shared_ptr< ObservationDependentVariableSettings > variableSettings )
+{
+    auto lightTimeSettings = std::dynamic_pointer_cast< LightTimeCorrectionComponentsDependentVariableSettings >( variableSettings );
+    if( lightTimeSettings == nullptr )
+    {
+        throw std::runtime_error(
+                "Error when adding light_time_correction_components dependent variable: settings object must be a "
+                "LightTimeCorrectionComponentsDependentVariableSettings." );
+    }
+
+    const auto legKey = std::make_pair( lightTimeSettings->originatingLinkEndType_, lightTimeSettings->linkEndType_ );
+    auto calculatorIt = legLightTimeCalculators_.find( legKey );
+    if( calculatorIt == legLightTimeCalculators_.end( ) || calculatorIt->second == nullptr )
+    {
+        throw std::runtime_error(
+                "Error when adding light_time_correction_components dependent variable: no LightTimeCalculator registered for leg (" +
+                observation_models::getLinkEndTypeString( lightTimeSettings->originatingLinkEndType_ ) + " -> " +
+                observation_models::getLinkEndTypeString( lightTimeSettings->linkEndType_ ) +
+                "). The observation model for this observable may not expose a leg matching these link-end types." );
+    }
+
+    std::shared_ptr< observation_models::LightTimeCalculatorBase > lightTimeCalculator = calculatorIt->second;
+    const std::vector< int > sourceIndices = resolveLightTimeCorrectionSourceIndices( lightTimeSettings, lightTimeCalculator );
+
+    const int currentIndex = totalDependentVariableSize_;
+    const int parameterSize = static_cast< int >( sourceIndices.size( ) );
+
+    ObservationDependentVariableAddFunction dependentVariableAddFunction =
+            [ currentIndex, parameterSize, lightTimeCalculator, sourceIndices ](
+                    Eigen::VectorXd &dependentVariables,
+                    const std::vector< double > & /*linkEndTimes*/,
+                    const std::vector< Eigen::Matrix< double, 6, 1 > > & /*linkEndStates*/,
+                    const Eigen::VectorXd & /*observable*/,
+                    const std::shared_ptr< observation_models::ObservationAncilliarySimulationSettings > /*ancillary*/ ) {
+                for( int i = 0; i < parameterSize; i++ )
+                {
+                    if( dependentVariables( currentIndex + i ) == dependentVariables( currentIndex + i ) )
+                    {
+                        throw std::runtime_error( "Error when saving observation dependent variables; overriding existing value" );
+                    }
+                }
+                const std::vector< double > components = lightTimeCalculator->getCurrentLightTimeCorrectionComponents( );
+                for( int i = 0; i < parameterSize; i++ )
+                {
+                    const int srcIdx = sourceIndices[ static_cast< size_t >( i ) ];
+                    if( srcIdx < 0 || srcIdx >= static_cast< int >( components.size( ) ) )
+                    {
+                        throw std::runtime_error(
+                                "Error when saving light_time_correction_components: cached component index out of range. "
+                                "Did the observation model evaluate before the dependent variable was computed?" );
+                    }
+                    dependentVariables( currentIndex + i ) = components[ static_cast< size_t >( srcIdx ) ];
+                }
+            };
+
+    dependentVariableAddFunctions_.push_back( dependentVariableAddFunction );
+    dependentVariableStartIndices_.push_back( totalDependentVariableSize_ );
+    dependentVariableSizes_.push_back( parameterSize );
+    settingsList_.push_back( variableSettings );
+    totalDependentVariableSize_ += parameterSize;
+}
+
+void ObservationDependentVariableCalculator::setLegLightTimeCalculators(
+        const LegLightTimeCalculatorMap& legLightTimeCalculators )
+{
+    legLightTimeCalculators_ = legLightTimeCalculators;
+
+    // Process any settings that were handed to `addDependentVariable` before we had the map.
+    std::vector< std::shared_ptr< ObservationDependentVariableSettings > > pending;
+    pending.swap( pendingLightTimeCorrectionSettings_ );
+    for( const auto& settings: pending )
+    {
+        registerLightTimeCorrectionComponents( settings );
+    }
+}
+
 void ObservationDependentVariableCalculator::addDependentVariable(
         const std::shared_ptr< ObservationDependentVariableSettings > variableSettings,
         const SystemOfBodies &bodies )
 {
-    // Check if the requested dependent variable can be used for given link
-    if( doesObservationDependentVariableExistForGivenLink( observableType_, linkEnds_.linkEnds_, variableSettings ) )
+    // Skip if the dependent variable is not applicable to this observable / link-ends pair.
+    if( !doesObservationDependentVariableExistForGivenLink( observableType_, linkEnds_.linkEnds_, variableSettings ) )
     {
-        // Retrieve the current index in list of dependent variables and size of new parameter
-        int currentIndex = totalDependentVariableSize_;
-        int parameterSize = getObservationDependentVariableSize( variableSettings, linkEnds_.linkEnds_ );
-
-        // Create function to compute dependent variable
-        ObservationDependentVariableFunction observationDependentVariableFunction =
-                getObservationVectorDependentVariableFunction( bodies, variableSettings, observableType_, linkEnds_ );
-
-        // Create function to compute dependent variable and add to existing list
-        ObservationDependentVariableAddFunction dependentVariableAddFunction =
-                [ = ]( Eigen::VectorXd &dependentVariables,
-                       const std::vector< double > &linkEndTimes,
-                       const std::vector< Eigen::Matrix< double, 6, 1 > > &linkEndStates,
-                       const Eigen::VectorXd &observable,
-                       const std::shared_ptr< observation_models::ObservationAncilliarySimulationSettings > ancilliarySimulationSettings ) {
-                    // Check if computation is not overriding existing values
-                    for( int i = 0; i < parameterSize; i++ )
-                    {
-                        if( dependentVariables( currentIndex + i ) == dependentVariables( currentIndex + i ) )
-                        {
-                            throw std::runtime_error( "Error when saving observation dependent variables; overriding existing value" );
-                        }
-                    }
-                    dependentVariables.segment( currentIndex, parameterSize ) =
-                            observationDependentVariableFunction( linkEndTimes, linkEndStates, observable, ancilliarySimulationSettings );
-                };
-
-        // Add new dependent variable function and settings to list
-        dependentVariableAddFunctions_.push_back( dependentVariableAddFunction );
-        dependentVariableStartIndices_.push_back( totalDependentVariableSize_ );
-        dependentVariableSizes_.push_back( parameterSize );
-        settingsList_.push_back( variableSettings );
-        totalDependentVariableSize_ += parameterSize;
+        return;
     }
+
+    // `light_time_correction_components` needs the per-leg LightTimeCalculator map to compute its
+    // size and lambda. If the map isn't set yet, defer registration until `setLegLightTimeCalculators`
+    // is called (the simulator takes care of this).
+    if( variableSettings->variableType_ == light_time_correction_components )
+    {
+        if( legLightTimeCalculators_.empty( ) )
+        {
+            pendingLightTimeCorrectionSettings_.push_back( variableSettings );
+        }
+        else
+        {
+            registerLightTimeCorrectionComponents( variableSettings );
+        }
+        return;
+    }
+
+    // Retrieve the current index in list of dependent variables and size of new parameter
+    int currentIndex = totalDependentVariableSize_;
+    int parameterSize = getObservationDependentVariableSize( variableSettings, linkEnds_.linkEnds_ );
+
+    // Create function to compute dependent variable
+    ObservationDependentVariableFunction observationDependentVariableFunction =
+            getObservationVectorDependentVariableFunction( bodies, variableSettings, observableType_, linkEnds_ );
+
+    // Create function to compute dependent variable and add to existing list
+    ObservationDependentVariableAddFunction dependentVariableAddFunction =
+            [ = ]( Eigen::VectorXd &dependentVariables,
+                   const std::vector< double > &linkEndTimes,
+                   const std::vector< Eigen::Matrix< double, 6, 1 > > &linkEndStates,
+                   const Eigen::VectorXd &observable,
+                   const std::shared_ptr< observation_models::ObservationAncilliarySimulationSettings > ancilliarySimulationSettings ) {
+                // Check if computation is not overriding existing values
+                for( int i = 0; i < parameterSize; i++ )
+                {
+                    if( dependentVariables( currentIndex + i ) == dependentVariables( currentIndex + i ) )
+                    {
+                        throw std::runtime_error( "Error when saving observation dependent variables; overriding existing value" );
+                    }
+                }
+                dependentVariables.segment( currentIndex, parameterSize ) =
+                        observationDependentVariableFunction( linkEndTimes, linkEndStates, observable, ancilliarySimulationSettings );
+            };
+
+    // Add new dependent variable function and settings to list
+    dependentVariableAddFunctions_.push_back( dependentVariableAddFunction );
+    dependentVariableStartIndices_.push_back( totalDependentVariableSize_ );
+    dependentVariableSizes_.push_back( parameterSize );
+    settingsList_.push_back( variableSettings );
+    totalDependentVariableSize_ += parameterSize;
 }
 
 void ObservationDependentVariableCalculator::addDependentVariables(
